@@ -1,0 +1,2494 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design Master</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --surface3: #22222f;
+    --border: #2a2a3a;
+    --accent: #7c6fff;
+    --accent2: #ff6b9d;
+    --accent3: #00d4aa;
+    --accent4: #ffb347;
+    --text: #e8e8f0;
+    --text2: #9090a8;
+    --text3: #5a5a72;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events:none; z-index:9999; opacity:0.4; }
+  .grid-bg { position:fixed; inset:0; z-index:0; background-image: linear-gradient(rgba(124,111,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(124,111,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events:none; }
+  .orb { position:fixed; border-radius:50%; filter:blur(80px); pointer-events:none; z-index:0; }
+  .orb1 { width:400px; height:400px; background:rgba(124,111,255,0.08); top:-100px; left:-100px; }
+  .orb2 { width:300px; height:300px; background:rgba(255,107,157,0.06); bottom:100px; right:-50px; }
+  #app { position:relative; z-index:1; display:flex; min-height:100vh; }
+  #sidebar { width:260px; min-height:100vh; background: var(--surface); border-right: 1px solid var(--border); display:flex; flex-direction:column; position:fixed; left:0; top:0; bottom:0; overflow-y:auto; z-index:100; }
+  .sidebar-logo { padding: 24px 20px; border-bottom: 1px solid var(--border); }
+  .logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; line-height: 1.1; }
+  .logo-sub { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 2px; margin-top: 4px; }
+  .progress-bar-wrap { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .progress-label { font-size: 11px; color: var(--text2); margin-bottom: 8px; display:flex; justify-content:space-between; }
+  .progress-bar { height: 4px; background: var(--surface3); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height:100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius:2px; transition: width 0.5s ease; }
+  .nav-section { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .nav-section-title { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--text3); padding: 4px 20px 8px; text-transform: uppercase; }
+  .nav-item { display:flex; align-items:center; gap:10px; padding: 9px 20px; cursor:pointer; color: var(--text2); font-size: 13px; transition: all 0.2s; position:relative; }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--accent); background: rgba(124,111,255,0.08); }
+  .nav-item.active::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); border-radius:0 2px 2px 0; }
+  .nav-icon { font-size:14px; width:18px; text-align:center; }
+  .nav-badge { margin-left:auto; font-family: 'Space Mono', monospace; font-size:9px; padding:2px 6px; border-radius:10px; background: var(--surface3); color: var(--text3); }
+  #main { margin-left: 260px; flex:1; min-height: 100vh; display:flex; flex-direction:column; }
+  #topbar { padding: 16px 32px; border-bottom: 1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background: rgba(10,10,15,0.8); backdrop-filter: blur(20px); position:sticky; top:0; z-index:50; }
+  .topbar-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+  .topbar-actions { display:flex; gap:10px; }
+  .btn { padding: 8px 16px; border-radius: 8px; font-family: 'Space Mono', monospace; font-size: 11px; cursor:pointer; border: none; transition: all 0.2s; letter-spacing: 0.5px; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text2); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #9585ff; transform: translateY(-1px); }
+  .btn-active { border-color: var(--accent)!important; color: var(--accent)!important; background: rgba(124,111,255,0.08)!important; }
+  #content { padding: 32px; flex:1; }
+  .page { display:none; }
+  .page.active { display:block; animation: fadeUp 0.3s ease; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  .hero-card { background: linear-gradient(135deg, rgba(124,111,255,0.12), rgba(255,107,157,0.08)); border: 1px solid rgba(124,111,255,0.2); border-radius: 16px; padding: 32px; margin-bottom: 28px; position:relative; overflow:hidden; }
+  .hero-card::before { content:''; position:absolute; top:-50%; right:-10%; width:300px; height:300px; background: radial-gradient(circle, rgba(124,111,255,0.1), transparent 70%); pointer-events:none; }
+  .hero-tag { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--accent); margin-bottom: 12px; }
+  .hero-title { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; line-height: 1.2; margin-bottom: 12px; }
+  .hero-title span { color: var(--accent); }
+  .hero-desc { color: var(--text2); font-size: 14px; line-height: 1.6; max-width: 560px; }
+  .hero-stats { display:flex; gap:24px; margin-top: 24px; }
+  .stat { text-align:center; }
+  .stat-num { font-family: 'Space Mono', monospace; font-size: 22px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; cursor:pointer; transition: all 0.25s; position:relative; overflow:hidden; }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,111,255,0.12); }
+  .card-icon { font-size:24px; margin-bottom:12px; }
+  .card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+  .card-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .card-meta { display:flex; align-items:center; justify-content:space-between; margin-top:14px; }
+  .card-tag { font-family: 'Space Mono', monospace; font-size: 9px; padding: 3px 8px; border-radius: 4px; letter-spacing: 1px; }
+  .tag-beginner { background:rgba(0,212,170,0.12); color:var(--accent3); }
+  .tag-intermediate { background:rgba(255,179,71,0.12); color:var(--accent4); }
+  .tag-advanced { background:rgba(255,107,157,0.12); color:var(--accent2); }
+  .card-progress-text { font-size:11px; color:var(--text3); }
+  .topic-header { display:flex; align-items:flex-start; gap:20px; padding: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 24px; }
+  .topic-icon-big { font-size: 40px; }
+  .topic-title-big { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+  .topic-desc-big { color:var(--text2); font-size:13px; line-height:1.6; }
+  .tabs { display:flex; gap:4px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  .tab { padding: 10px 18px; cursor:pointer; font-size:13px; color:var(--text2); border-bottom: 2px solid transparent; margin-bottom:-1px; transition:all 0.2s; }
+  .tab:hover { color:var(--text); }
+  .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+  .theory-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+  .theory-h2 { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; margin-bottom: 14px; display:flex; align-items:center; gap:10px; }
+  .theory-h2 .dot { width:6px; height:6px; border-radius:50%; background: var(--accent); flex-shrink:0; }
+  .theory-p { color:var(--text2); font-size:13.5px; line-height:1.8; margin-bottom:12px; }
+  .theory-list { list-style:none; }
+  .theory-list li { padding: 6px 0 6px 18px; position:relative; color:var(--text2); font-size:13px; line-height:1.6; }
+  .theory-list li::before { content:'▸'; position:absolute; left:0; color:var(--accent); font-size:10px; top:8px; }
+  .code-block { background: #0d0d14; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin: 12px 0; font-family: 'Space Mono', monospace; font-size: 12px; color: #a8b8e8; overflow-x: auto; line-height: 1.7; }
+  .code-keyword { color: #c792ea; }
+  .code-string { color: #c3e88d; }
+  .code-comment { color: #546e7a; font-style:italic; }
+  .code-number { color: var(--accent4); }
+  .diagram-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin: 16px 0; text-align:center; }
+  .arch-diagram { display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; padding: 16px 0; }
+  .arch-node { background: var(--surface3); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 12px; font-family: 'Space Mono', monospace; }
+  .arch-node.primary { border-color: var(--accent); color: var(--accent); }
+  .arch-node.secondary { border-color: var(--accent3); color: var(--accent3); }
+  .arch-node.warning { border-color: var(--accent4); color: var(--accent4); }
+  .arch-arrow { color: var(--text3); font-size:18px; }
+  .quiz-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+  .quiz-question { font-size: 15px; font-weight: 600; margin-bottom: 18px; line-height: 1.5; }
+  .quiz-options { display:flex; flex-direction:column; gap:10px; }
+  .quiz-option { padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); cursor:pointer; font-size: 13px; transition: all 0.2s; background: var(--surface2); display:flex; align-items:center; gap:12px; }
+  .quiz-option:hover:not(.disabled) { border-color: var(--accent); background: rgba(124,111,255,0.05); }
+  .quiz-option.correct { border-color: var(--accent3)!important; background: rgba(0,212,170,0.08)!important; color: var(--accent3)!important; }
+  .quiz-option.wrong { border-color: var(--accent2)!important; background: rgba(255,107,157,0.08)!important; color: var(--accent2)!important; }
+  .quiz-option.disabled { pointer-events:none; }
+  .option-letter { width:24px; height:24px; border-radius:50%; background: var(--surface3); display:flex; align-items:center; justify-content:center; font-family: 'Space Mono', monospace; font-size:11px; flex-shrink:0; }
+  .quiz-explain { margin-top:14px; padding:12px 14px; background:rgba(124,111,255,0.06); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; font-size:13px; color:var(--text2); line-height:1.6; display:none; }
+  .quiz-explain.show { display:block; }
+  .practice-scenario { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+  .scenario-tag { font-family: 'Space Mono', monospace; font-size:9px; letter-spacing:2px; color:var(--accent2); margin-bottom:8px; }
+  .scenario-title { font-family: 'Syne', sans-serif; font-size:18px; font-weight:700; margin-bottom:8px; }
+  .scenario-desc { color: var(--text2); font-size:13px; line-height:1.7; margin-bottom:16px; }
+  .requirement-list { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+  .req-item { display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--surface2); border-radius:6px; font-size:12.5px; }
+  .ai-btn { padding: 12px 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; border:none; border-radius: 10px; font-family: 'Space Mono', monospace; font-size: 11px; cursor:pointer; letter-spacing:1px; display:inline-flex; align-items:center; gap:8px; transition:all 0.2s; }
+  .ai-btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(124,111,255,0.3); }
+  .ai-btn:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
+  .ai-response { background: var(--surface2); border: 1px solid rgba(124,111,255,0.2); border-radius: 10px; padding: 20px; margin-top: 16px; font-size: 13px; line-height: 1.8; color: var(--text2); display:none; }
+  .ai-response.show { display:block; }
+  .ai-response h4 { font-family:'Syne',sans-serif; font-size:14px; color:var(--accent); margin-bottom:10px; margin-top:14px; }
+  .ai-response h4:first-child { margin-top:0; }
+  .roadmap-track { position:relative; padding-left: 32px; }
+  .roadmap-track::before { content:''; position:absolute; left:11px; top:0; bottom:0; width:2px; background: linear-gradient(to bottom, var(--accent), var(--accent2), var(--accent3)); opacity:0.3; }
+  .roadmap-item { position:relative; margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; cursor:pointer; transition: all 0.2s; }
+  .roadmap-item:hover { border-color: var(--accent); }
+  .roadmap-item.done { opacity:0.6; }
+  .roadmap-item.done .roadmap-dot { background:var(--accent3); box-shadow: 0 0 8px var(--accent3); }
+  .roadmap-dot { position:absolute; left:-26px; top:50%; transform:translateY(-50%); width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); box-shadow: 0 0 8px var(--accent); }
+  .roadmap-phase { font-family:'Space Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--text3); margin-bottom:4px; }
+  .roadmap-name { font-weight:600; font-size:14px; margin-bottom:4px; }
+  .roadmap-topics { font-size:12px; color:var(--text3); }
+  .loading { display:inline-flex; align-items:center; gap:8px; color:var(--text3); font-size:13px; }
+  .spinner { width:16px; height:16px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .scoreboard { display:flex; gap:12px; margin-bottom:24px; }
+  .score-card { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center; }
+  .score-num { font-family:'Space Mono',monospace; font-size:28px; font-weight:700; }
+  .score-label { font-size:11px; color:var(--text3); margin-top:4px; }
+  .streak-days { display:flex; gap:6px; flex-wrap:wrap; }
+  .streak-day { width:28px; height:28px; border-radius:6px; background:var(--surface3); display:flex; align-items:center; justify-content:center; font-size:10px; font-family:'Space Mono',monospace; color:var(--text3); }
+  .streak-day.done { background:rgba(124,111,255,0.2); color:var(--accent); }
+  .streak-day.today { background:var(--accent); color:white; }
+  .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+  .section-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; }
+  .cheat-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .cheat-table th { background:var(--surface2); padding:10px 14px; text-align:left; font-family:'Space Mono',monospace; font-size:10px; letter-spacing:1px; color:var(--text3); border-bottom:1px solid var(--border); }
+  .cheat-table td { padding:10px 14px; border-bottom:1px solid rgba(42,42,58,0.5); color:var(--text2); vertical-align:top; }
+  .cheat-table tr:hover td { background:var(--surface2); }
+  .mono { font-family:'Space Mono',monospace; color:var(--accent); font-size:11px; }
+  .pill { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:var(--surface2); border:1px solid var(--border); font-size:11px; color:var(--text2); }
+  .mock-timer { font-family:'Space Mono',monospace; font-size:34px; color:var(--accent); letter-spacing:2px; }
+  .rubric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin-top:14px; }
+  .rubric-item { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px; }
+  .rubric-item label { display:block; font-size:12px; margin-bottom:8px; color:var(--text2); }
+  .rubric-item input { width:100%; }
+  .coverage-table td strong { color:var(--text); }
+  .coverage-covered { color:var(--accent3); font-weight:600; }
+  .coverage-partial { color:var(--accent4); font-weight:600; }
+  .coverage-next { color:var(--text3); font-weight:600; }
+  .analysis-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; margin-top:12px; }
+  .analysis-card { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px; }
+  .analysis-title { font-size:11px; color:var(--text3); font-family:'Space Mono',monospace; letter-spacing:1px; margin-bottom:8px; }
+  .analysis-list { list-style:none; }
+  .analysis-list li { font-size:12.5px; color:var(--text2); line-height:1.55; padding:4px 0; }
+  textarea { background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; outline:none; padding:12px; width:100%; min-height:120px; resize:vertical; }
+  textarea:focus { border-color:var(--accent); }
+  input[type=text] { background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; outline:none; padding:12px; }
+  input[type=text]:focus { border-color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<div id="app">
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-text">System Design<br>Master</div>
+      <div class="logo-sub">// ROADMAP TOOL</div>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-label"><span>Tiến độ tổng quan</span><span id="pct">0%</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Tổng quan</div>
+      <div class="nav-item active" onclick="navigate('home')"><span class="nav-icon">🏠</span> Dashboard</div>
+      <div class="nav-item" onclick="navigate('roadmap')"><span class="nav-icon">🗺️</span> Lộ trình học</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Học tập</div>
+      <div class="nav-item" onclick="navigate('theory')"><span class="nav-icon">📚</span> Lý thuyết<span class="nav-badge" id="theoryBadge">0</span></div>
+      <div class="nav-item" onclick="navigate('review')"><span class="nav-icon">🔁</span> Ôn tập thông minh</div>
+      <div class="nav-item" onclick="navigate('practice')"><span class="nav-icon">⚙️</span> Thực hành<span class="nav-badge" id="practiceBadge">0</span></div>
+      <div class="nav-item" onclick="navigate('quiz')"><span class="nav-icon">🎯</span> Ôn luyện / Quiz</div>
+      <div class="nav-item" onclick="navigate('exercises')"><span class="nav-icon">💪</span> Bài tập lớn<span class="nav-badge" id="exerciseBadge">0</span></div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Tài nguyên</div>
+      <div class="nav-item" onclick="navigate('cheatsheet')"><span class="nav-icon">📋</span> Cheat Sheet</div>
+      <div class="nav-item" onclick="navigate('progress')"><span class="nav-icon">📈</span> Tiến độ của tôi</div>
+    </div>
+  </nav>
+
+  <div id="main">
+    <div id="topbar">
+      <div class="topbar-title" id="pageTitle">Dashboard</div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="navigate('quiz')">⚡ Quick Quiz</button>
+        <button class="btn btn-primary" onclick="navigate('practice')">+ Thực hành ngay</button>
+      </div>
+    </div>
+    <div id="content">
+
+      <!-- HOME -->
+      <div class="page active" id="page-home">
+        <div class="hero-card">
+          <div class="hero-tag">// SYSTEM DESIGN MASTERY PATH</div>
+          <h1 class="hero-title">Chinh phục<br><span>System Design</span> từ 0→∞</h1>
+          <p class="hero-desc">Lộ trình bài bản từ roadmap.sh — lý thuyết có ví dụ thực tế, bài tập thiết kế hệ thống, quiz ôn luyện và AI trợ giảng. Học theo chủ đề, ôn theo bài — đi đến đâu chắc đến đó.</p>
+          <div class="hero-stats">
+            <div class="stat"><div class="stat-num" id="statTheory">0</div><div class="stat-label">Chủ đề lý thuyết</div></div>
+            <div class="stat"><div class="stat-num" id="statLabs">0</div><div class="stat-label">Case study</div></div>
+            <div class="stat"><div class="stat-num" id="statQuiz">0</div><div class="stat-label">Câu quiz</div></div>
+            <div class="stat"><div class="stat-num" id="statExercises">0</div><div class="stat-label">Bài tập Interview</div></div>
+          </div>
+        </div>
+        <div class="section-header"><div class="section-title">🔥 Module được đề xuất</div></div>
+        <div class="cards-grid">
+          <div class="card" onclick="openTopic('scalability')"><div class="card-icon">📈</div><div class="card-title">Scalability & Load Balancing</div><div class="card-desc">Horizontal vs vertical scaling, load balancer, reverse proxy, CDN</div><div class="card-meta"><span class="card-tag tag-beginner">BEGINNER</span><span class="card-progress-text">→ Bắt đầu</span></div></div>
+          <div class="card" onclick="openTopic('database')"><div class="card-icon">🗄️</div><div class="card-title">Database Design</div><div class="card-desc">SQL vs NoSQL, sharding, replication, indexing, CAP theorem</div><div class="card-meta"><span class="card-tag tag-beginner">BEGINNER</span><span class="card-progress-text">→ Bắt đầu</span></div></div>
+          <div class="card" onclick="openTopic('caching')"><div class="card-icon">⚡</div><div class="card-title">Caching Strategies</div><div class="card-desc">Redis, Memcached, cache eviction policies, cache-aside, write-through</div><div class="card-meta"><span class="card-tag tag-intermediate">INTERMEDIATE</span><span class="card-progress-text">→ Bắt đầu</span></div></div>
+          <div class="card" onclick="openTopic('messagequeue')"><div class="card-icon">📨</div><div class="card-title">Message Queues</div><div class="card-desc">Kafka, RabbitMQ, async processing, pub/sub pattern</div><div class="card-meta"><span class="card-tag tag-intermediate">INTERMEDIATE</span><span class="card-progress-text">→ Bắt đầu</span></div></div>
+          <div class="card" onclick="openTopic('microservices')"><div class="card-icon">🧩</div><div class="card-title">Microservices</div><div class="card-desc">Service decomposition, API Gateway, service mesh, circuit breaker</div><div class="card-meta"><span class="card-tag tag-advanced">ADVANCED</span><span class="card-progress-text">→ Bắt đầu</span></div></div>
+          <div class="card" onclick="navigate('quiz')"><div class="card-icon">🎯</div><div class="card-title">Quick Quiz</div><div class="card-desc">Câu hỏi trắc nghiệm đa dạng chủ đề, phân tích đáp án chi tiết</div><div class="card-meta"><span class="card-tag tag-beginner">MỌI CẤP ĐỘ</span><span class="card-progress-text">→ Làm ngay</span></div></div>
+        </div>
+        <div class="section-header"><div class="section-title">📅 Streak học tập — Tuần này</div></div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:24px">
+          <div class="streak-days">
+            <div class="streak-day done">T2</div><div class="streak-day done">T3</div><div class="streak-day done">T4</div>
+            <div class="streak-day today">T5</div><div class="streak-day">T6</div><div class="streak-day">T7</div><div class="streak-day">CN</div>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:var(--text3)">🔥 Streak 4 ngày liên tiếp — Tiếp tục duy trì!</div>
+        </div>
+      </div>
+
+      <!-- ROADMAP -->
+      <div class="page" id="page-roadmap">
+        <div class="hero-card" style="margin-bottom:24px">
+          <div class="hero-tag">// LEARNING PATH</div>
+          <h2 class="hero-title" style="font-size:22px">Lộ trình <span>từng bước</span> chinh phục System Design</h2>
+          <p class="hero-desc">Theo sát roadmap.sh — từ nền tảng đến pattern nâng cao, đủ để pass System Design Interview tại Big Tech.</p>
+        </div>
+        <div class="roadmap-track" id="roadmapTrack"></div>
+        <div class="hero-card" style="margin:24px 0 16px">
+          <div class="hero-tag">// SENIOR INTERVIEW TRACK</div>
+          <h3 class="hero-title" style="font-size:20px">Lộ trình mô phỏng First American - Senior Software Engineer (6+ năm)</h3>
+          <p class="hero-desc">Thiết kế từ trải nghiệm phỏng vấn thực tế: coding logic, system design end-to-end, fullstack cloud, security và deployment strategy.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px" id="faTrackStats"></div>
+        </div>
+        <div class="roadmap-track" id="firstAmericanTrack"></div>
+      </div>
+
+      <!-- THEORY -->
+      <div class="page" id="page-theory">
+        <div class="section-header">
+          <div class="section-title">📚 Kho lý thuyết</div>
+          <span style="font-size:12px;color:var(--accent);cursor:pointer" onclick="renderTheoryList()">← Tất cả chủ đề</span>
+        </div>
+        <div id="theoryContent"></div>
+      </div>
+
+      <!-- REVIEW -->
+      <div class="page" id="page-review">
+        <div class="section-header"><div class="section-title">🔁 Ôn tập thông minh</div></div>
+        <div id="reviewContent"></div>
+      </div>
+
+      <!-- PRACTICE -->
+      <div class="page" id="page-practice">
+        <div class="section-header"><div class="section-title">⚙️ Thực hành — Case Studies</div></div>
+        <div id="practiceContent"></div>
+      </div>
+
+      <!-- QUIZ -->
+      <div class="page" id="page-quiz">
+        <div class="section-header">
+          <div class="section-title">🎯 Quiz & Ôn luyện</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-ghost" onclick="renderQuiz(20)">20 câu</button>
+            <button class="btn btn-ghost" onclick="renderQuiz(40)">40 câu</button>
+            <button class="btn btn-ghost" onclick="renderAdaptiveQuiz(currentQuizCount)">Adaptive</button>
+            <button class="btn btn-primary" onclick="renderQuiz(currentQuizCount)">🔀 Làm lại</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="quizMeta"></div>
+        <div class="scoreboard">
+          <div class="score-card"><div class="score-num" id="scoreCorrect" style="color:var(--accent3)">0</div><div class="score-label">Đúng</div></div>
+          <div class="score-card"><div class="score-num" id="scoreWrong" style="color:var(--accent2)">0</div><div class="score-label">Sai</div></div>
+          <div class="score-card"><div class="score-num" id="scoreTotal">0</div><div class="score-label">Tổng câu</div></div>
+          <div class="score-card"><div class="score-num" id="scorePct" style="color:var(--accent)">—</div><div class="score-label">Tỉ lệ đúng</div></div>
+        </div>
+        <div id="quizContent"></div>
+      </div>
+
+      <!-- EXERCISES -->
+      <div class="page" id="page-exercises">
+        <div class="section-header"><div class="section-title">💪 Bài tập lớn — Interview Style</div></div>
+        <div id="exercisesContent"></div>
+      </div>
+
+      <!-- CHEATSHEET -->
+      <div class="page" id="page-cheatsheet">
+        <div class="section-header"><div class="section-title">📋 System Design Cheat Sheet</div></div>
+        <div id="cheatsheetContent"></div>
+      </div>
+
+      <!-- PROGRESS -->
+      <div class="page" id="page-progress">
+        <div class="section-header"><div class="section-title">📈 Tiến độ của tôi</div></div>
+        <div id="progressContent"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'system-design-master-v2';
+
+const ROADMAP = [
+  { phase: 'PHASE 1 — FOUNDATION', name: 'System Design Intro', topics: 'Approach interview, functional/non-functional requirements', difficulty: 'beginner' },
+  { phase: '', name: 'Performance vs Scalability', topics: 'Latency, throughput, vertical vs horizontal scale', difficulty: 'beginner' },
+  { phase: '', name: 'Networking Basics', topics: 'HTTP, TCP/IP, DNS, WebSocket', difficulty: 'beginner' },
+  { phase: '', name: 'Availability vs Consistency', topics: 'CAP theorem, failover, replication', difficulty: 'beginner' },
+  { phase: 'PHASE 2 — CORE BUILDING BLOCKS', name: 'Load Balancers & Reverse Proxy', topics: 'L4/L7, algorithms, sticky session', difficulty: 'intermediate' },
+  { phase: '', name: 'CDN', topics: 'Push/Pull CDN, cache key, cache invalidation', difficulty: 'intermediate' },
+  { phase: '', name: 'Databases', topics: 'SQL vs NoSQL, indexing, replication, sharding', difficulty: 'intermediate' },
+  { phase: '', name: 'Caching', topics: 'Cache-aside, write-through, refresh-ahead, eviction', difficulty: 'intermediate' },
+  { phase: '', name: 'Message Queues', topics: 'Async processing, pub/sub, retries, DLQ', difficulty: 'intermediate' },
+  { phase: 'PHASE 3 — DISTRIBUTED SYSTEMS', name: 'Microservices', topics: 'Service decomposition, API gateway, service discovery', difficulty: 'advanced' },
+  { phase: '', name: 'Consistency Patterns', topics: 'Strong/Eventual consistency, quorum reads/writes', difficulty: 'advanced' },
+  { phase: '', name: 'Consensus Basics', topics: 'Raft/Paxos intuition, leader election', difficulty: 'advanced' },
+  { phase: '', name: 'Reliability & Observability', topics: 'SLA/SLO, monitoring, logging, tracing, chaos', difficulty: 'advanced' },
+  { phase: 'PHASE 4 — INTERVIEW MASTERY', name: 'Design Patterns', topics: 'CQRS, event sourcing, saga, outbox', difficulty: 'advanced' },
+  { phase: '', name: 'Back-of-envelope Estimation', topics: 'QPS, storage, bandwidth, memory sizing', difficulty: 'advanced' },
+  { phase: '', name: 'Mock Interview', topics: 'Present architecture, trade-off analysis, bottlenecks', difficulty: 'advanced' }
+];
+
+const ROADMAP_LEARNING_MAP = [
+  { primaryTopic: 'scalability', secondaryTopic: 'api', labIndex: 0, outcome: 'Nắm framework interview và baseline architecture.' },
+  { primaryTopic: 'scalability', secondaryTopic: 'database', labIndex: 0, outcome: 'Phân tích được latency/throughput và scaling direction.' },
+  { primaryTopic: 'networking', secondaryTopic: 'api', labIndex: 1, outcome: 'Hiểu end-to-end request flow DNS/TLS/HTTP.' },
+  { primaryTopic: 'consistency', secondaryTopic: 'microservices', labIndex: 2, outcome: 'Giải thích được CAP và quyết định C/A theo domain.' },
+  { primaryTopic: 'scalability', secondaryTopic: 'api', labIndex: 1, outcome: 'Thiết kế được LB/reverse proxy routing cơ bản.' },
+  { primaryTopic: 'caching', secondaryTopic: 'networking', labIndex: 1, outcome: 'Đặt được cache layer đúng vị trí và invalidation strategy.' },
+  { primaryTopic: 'database', secondaryTopic: 'consistency', labIndex: 2, outcome: 'Chọn DB model có lý do và nêu được trade-off.' },
+  { primaryTopic: 'caching', secondaryTopic: 'database', labIndex: 0, outcome: 'Thiết kế cache key, TTL, fallback cho read path.' },
+  { primaryTopic: 'messagequeue', secondaryTopic: 'microservices', labIndex: 2, outcome: 'Mô tả đúng async workflow với retry/DLQ.' },
+  { primaryTopic: 'microservices', secondaryTopic: 'service_discovery', labIndex: 3, outcome: 'Tách service boundary rõ và xử lý failure cơ bản.' },
+  { primaryTopic: 'consistency', secondaryTopic: 'database', labIndex: 2, outcome: 'Trình bày quorum/eventual consistency trong case thực tế.' },
+  { primaryTopic: 'consistency', secondaryTopic: 'service_discovery', labIndex: 3, outcome: 'Hiểu intuition consensus và leader-based replication.' },
+  { primaryTopic: 'microservices', secondaryTopic: 'service_discovery', labIndex: 3, outcome: 'Thiết kế observability + SLO + alert path.' },
+  { primaryTopic: 'microservices', secondaryTopic: 'api', labIndex: 3, outcome: 'Áp dụng pattern CQRS/Saga theo đúng bối cảnh.' },
+  { primaryTopic: 'scalability', secondaryTopic: 'database', labIndex: 0, outcome: 'Ước lượng được QPS/storage/bandwidth để justify design.' },
+  { primaryTopic: 'security', secondaryTopic: 'microservices', labIndex: 3, outcome: 'Trình bày hoàn chỉnh mock interview với trade-off rõ ràng.' }
+];
+
+function getRoadmapGuide(i) {
+  const g = ROADMAP_LEARNING_MAP[i] || {};
+  const p = g.primaryTopic && TOPICS[g.primaryTopic] ? TOPICS[g.primaryTopic].title : 'Theory tổng quan';
+  const s = g.secondaryTopic && TOPICS[g.secondaryTopic] ? TOPICS[g.secondaryTopic].title : null;
+  return {
+    ...g,
+    from: s ? `${p} + ${s}` : p,
+    labTitle: Number.isInteger(g.labIndex) && PRACTICE_LABS[g.labIndex] ? PRACTICE_LABS[g.labIndex].title : 'Practice bất kỳ theo điểm yếu',
+    outcome: g.outcome || 'Hoàn thành checklist + làm quiz adaptive >= 70%.'
+  };
+}
+
+function roadmapOpenTheory(i) {
+  const g = getRoadmapGuide(i);
+  if (g.primaryTopic && TOPICS[g.primaryTopic]) {
+    openTopic(g.primaryTopic);
+  } else {
+    navigate('theory');
+  }
+}
+
+function roadmapOpenPractice(i) {
+  const g = getRoadmapGuide(i);
+  navigate('practice');
+  setTimeout(() => startPracticeNow(Number.isInteger(g.labIndex) ? g.labIndex : undefined), 80);
+}
+
+function roadmapOpenQuiz() {
+  navigate('quiz');
+  setTimeout(() => renderAdaptiveQuiz(currentQuizCount), 80);
+}
+
+const FIRST_AMERICAN_TRACK = [
+  {
+    week: 1,
+    round: 'Round 1 - Coding Logic',
+    focus: 'Greedy/simulation và string processing trong bối cảnh business problem',
+    drills: 'Giải 2 bài/ngày: Food Distribution style + Regex/string sanitize; giải thích reasoning bằng tiếng nói interview.',
+    output: '1 file notes: input assumptions, edge cases, time complexity, cách verify kết quả.',
+    whereToDo: 'Trong tool: Quiz (Adaptive) + Exercises (Food Distribution mini-case) + Practice Now cho reasoning.',
+    doneWhen: 'Hoàn thành 10 bài coding logic, accuracy >= 75%, có 1 notes file theo format Problem -> Approach -> Complexity -> Test.',
+    difficulty: 'beginner'
+  },
+  {
+    week: 2,
+    round: 'Round 1 - Coding Communication',
+    focus: 'Tốc độ implement + clarity trong trade-off giữa brute force và iterative balancing',
+    drills: 'Làm timed set 45 phút: 2 bài logic; bắt buộc có phần explain tại sao chọn hướng hiện tại.',
+    output: '1 template trả lời coding interview theo format: Problem -> Approach -> Complexity -> Test.',
+    whereToDo: 'Trong tool: Exercises tab (timed mock), Progress tab để export report từng tuần.',
+    doneWhen: 'Hoàn thành 3 phiên timed set, mỗi phiên <= 45 phút, tự chấm đạt >= 7/10 ở phần explain.',
+    difficulty: 'beginner'
+  },
+  {
+    week: 3,
+    round: 'Round 2 - System Design',
+    focus: 'Thiết kế end-to-end cho marketplace NoBroker-style (tenant-owner, listing, search/filter)',
+    drills: 'Vẽ flow từ UI -> API Gateway -> service -> DB, nêu rõ data ownership và API boundaries.',
+    output: '1 sơ đồ kiến trúc + 1 sequence flow cho create listing, search, contact owner.',
+    whereToDo: 'Trong tool: Theory (API, Microservices, Database) + Practice Lab 1 + Exercises (URL Shortener style flow).',
+    doneWhen: 'Có design doc end-to-end với 3 luồng chính: create listing, search/filter, contact owner; có API contract cơ bản.',
+    difficulty: 'intermediate'
+  },
+  {
+    week: 4,
+    round: 'Round 2 - Deep Dive Trade-off',
+    focus: 'Database per service, caching cho search, chiến lược consistency và scale đọc/ghi',
+    drills: 'Mỗi ngày chọn 1 failure mode: stale search index, hotspot listing, API timeout; đưa phương án xử lý.',
+    output: '1 tài liệu trade-off: schema choice, cache key, reindex strategy, fallback plan.',
+    whereToDo: 'Trong tool: Theory (Caching, Consistency, Service Discovery) + Practice Lab 2/3 + Review smart prompts.',
+    doneWhen: 'Liệt kê tối thiểu 5 failure mode + mitigation, có bảng trade-off C/A/latency/cost cho từng quyết định.',
+    difficulty: 'intermediate'
+  },
+  {
+    week: 5,
+    round: 'Round 3 - Fullstack + Cloud',
+    focus: 'SSR vs CSR, render optimization, cache layers và ảnh hưởng đến UX/SEO',
+    drills: 'So sánh 3 kiến trúc frontend (SSR/CSR/hybrid) cho cùng một use case.',
+    output: '1 decision matrix chọn rendering strategy + cache plan (browser/CDN/server).',
+    whereToDo: 'Trong tool: Theory (Networking, Caching, API) + Cheat Sheet + Exercises tab để mock scenario.',
+    doneWhen: 'Có decision matrix với ít nhất 6 tiêu chí (SEO, TTFB, interactivity, cache, complexity, cost).',
+    difficulty: 'intermediate'
+  },
+  {
+    week: 6,
+    round: 'Round 3 - Containers & VPC',
+    focus: 'Docker runtime, ECS/K8s deploy model, subnet/security group, network boundaries',
+    drills: 'Thiết kế deployment 3-tier app trong VPC: public/private subnet, ingress/egress rule, secrets flow.',
+    output: '1 architecture sheet cloud + checklist security baseline (token storage, input validation, XSS/CSRF).',
+    whereToDo: 'Trong tool: Theory (Security, Microservices, Networking) + Practice Lab 4 + Progress checklist.',
+    doneWhen: 'Vẽ được sơ đồ VPC 3-tier + security group rules + secrets flow, và nêu rõ điểm chặn XSS/CSRF/token leak.',
+    difficulty: 'advanced'
+  },
+  {
+    week: 7,
+    round: 'Round 4 - Auth & Data Security',
+    focus: 'IAM vs JWT vs OAuth, token-based vs session-based, database scaling patterns',
+    drills: 'Mô tả 2 luồng auth đầy đủ: internal service auth và user auth with refresh token.',
+    output: '1 auth comparison sheet + 1 scaling plan (read replica, sharding trigger, cache invalidation).',
+    whereToDo: 'Trong tool: Theory (Security, Database, Consistency) + Quiz adaptive level advanced + Mock rubric.',
+    doneWhen: 'Trình bày được 2 auth flows + threat model cơ bản + kế hoạch scale DB có ngưỡng kích hoạt rõ ràng.',
+    difficulty: 'advanced'
+  },
+  {
+    week: 8,
+    round: 'Round 4 - Deployment Excellence',
+    focus: 'Blue-green/canary, rollback safety, backward compatibility, CI/CD quality gates',
+    drills: 'Chạy mock interview 60 phút: trình bày design + deployment + incident rollback.',
+    output: '1 runbook deploy + rollback + compatibility checklist trước khi release.',
+    whereToDo: 'Trong tool: Exercises (mock interview), Progress (study plan + export), Practice (deployment scenario).',
+    doneWhen: 'Hoàn thành 1 mock 60 phút với score rubric >= 75% và có runbook deploy/rollback versioned.',
+    difficulty: 'advanced'
+  }
+];
+
+const TOPICS = {
+  scalability: {
+    icon: '📈',
+    title: 'Scalability & Load Balancing',
+    difficulty: 'beginner',
+    quickReview: ['Scale up: nhanh nhưng giới hạn phần cứng', 'Scale out: khó hơn nhưng chịu tải tốt và có HA', 'LB giúp phân phối tải và giảm SPOF'],
+    checklist: ['Giải thích khi nào chọn scale up/scale out', 'Vẽ sơ đồ LB + app tier + DB tier', 'Nêu ít nhất 2 thuật toán LB'],
+    sections: [
+      { h: 'Scalability là gì?', content: `<p class="theory-p">Scalability là khả năng hệ thống xử lý tải tăng mà vẫn giữ trải nghiệm ổn định. Bài toán luôn là cân bằng giữa chi phí, độ trễ và độ phức tạp vận hành.</p><ul class="theory-list"><li><strong>Vertical Scaling</strong>: tăng CPU/RAM của một máy.</li><li><strong>Horizontal Scaling</strong>: thêm nhiều máy cùng phục vụ.</li><li><strong>Auto-scaling</strong>: scale theo metric (CPU, queue lag, p95 latency).</li></ul>` },
+      { h: 'Load Balancer thực tế', content: `<ul class="theory-list"><li><strong>L4 LB</strong>: nhanh, theo TCP/UDP.</li><li><strong>L7 LB</strong>: route theo path/host/header.</li><li><strong>Health checks</strong>: tự loại node lỗi.</li></ul><div class="diagram-box"><div class="arch-diagram"><div class="arch-node warning">Client</div><div class="arch-arrow">→</div><div class="arch-node primary">L7 LB</div><div class="arch-arrow">→</div><div style="display:flex;flex-direction:column;gap:8px"><div class="arch-node secondary">App A</div><div class="arch-node secondary">App B</div><div class="arch-node secondary">App N</div></div><div class="arch-arrow">→</div><div class="arch-node">DB</div></div></div>` }
+    ]
+  },
+  database: {
+    icon: '🗄️',
+    title: 'Database Design',
+    difficulty: 'beginner',
+    quickReview: ['SQL mạnh transaction/join', 'NoSQL mạnh scale ngang và schema linh hoạt', 'Index đúng giúp giảm query time theo cấp số lớn'],
+    checklist: ['Phân biệt OLTP và OLAP', 'Chọn khóa partition hợp lý', 'Giải thích trade-off replication và sharding'],
+    sections: [
+      { h: 'SQL vs NoSQL', content: `<div class="diagram-box"><table class="cheat-table"><tr><th>Tiêu chí</th><th>SQL</th><th>NoSQL</th></tr><tr><td>Schema</td><td>Chặt chẽ</td><td>Linh hoạt</td></tr><tr><td>Transaction</td><td>Mạnh</td><td>Tuỳ engine</td></tr><tr><td>Scale</td><td>Read replica, partition</td><td>Native scale out</td></tr></table></div><p class="theory-p">Trong interview, quan trọng nhất là giải thích <strong>vì sao</strong> chọn DB chứ không phải kể tên công nghệ.</p>` },
+      { h: 'Replication, Sharding, CAP', content: `<ul class="theory-list"><li><strong>Replication</strong>: tăng read throughput + DR.</li><li><strong>Sharding</strong>: chia dữ liệu để vượt giới hạn 1 node.</li><li><strong>CAP</strong>: khi có partition, chọn ưu tiên consistency hay availability.</li></ul>` }
+    ]
+  },
+  caching: {
+    icon: '⚡',
+    title: 'Caching Strategies',
+    difficulty: 'intermediate',
+    quickReview: ['Cache hit càng cao càng giảm tải DB', 'Cache invalidation là phần khó nhất', 'Luôn định nghĩa TTL và fallback'],
+    checklist: ['Mô tả cache-aside bằng flow', 'Nêu cache key strategy', 'Liệt kê rủi ro stale data'],
+    sections: [
+      { h: 'Pattern quan trọng', content: `<ul class="theory-list"><li><strong>Cache-Aside</strong>: đọc cache trước, miss thì đọc DB.</li><li><strong>Write-Through</strong>: ghi đồng thời cache và DB.</li><li><strong>Write-Behind</strong>: ghi cache trước, flush DB sau.</li><li><strong>Refresh-Ahead</strong>: làm nóng cache trước khi hết hạn.</li></ul>` },
+      { h: 'Eviction và phân tầng cache', content: `<p class="theory-p">Bạn có thể kết hợp nhiều tầng cache: CDN cache, edge cache, application cache, database cache. Chọn LRU/LFU dựa vào access pattern.</p>` }
+    ]
+  },
+  messagequeue: {
+    icon: '📨',
+    title: 'Message Queue & Event-driven',
+    difficulty: 'intermediate',
+    quickReview: ['Queue giúp tách producer-consumer', 'Phải có idempotency để chống xử lý trùng', 'DLQ bắt buộc cho message lỗi'],
+    checklist: ['Thiết kế retry + exponential backoff', 'Nêu chiến lược DLQ', 'Mô tả at-most-once/at-least-once'],
+    sections: [
+      { h: 'Khi nào dùng queue?', content: `<ul class="theory-list"><li>Spike traffic cần buffer.</li><li>Task dài không nên block request sync.</li><li>Muốn mở rộng theo consumer group.</li></ul>` },
+      { h: 'Kafka vs RabbitMQ', content: `<p class="theory-p"><strong>Kafka</strong> hợp event streaming, replay event theo offset. <strong>RabbitMQ</strong> mạnh routing theo exchange/queue, hợp xử lý tác vụ truyền thống.</p>` }
+    ]
+  },
+  microservices: {
+    icon: '🧩',
+    title: 'Microservices & Reliability',
+    difficulty: 'advanced',
+    quickReview: ['Không tách microservices quá sớm', 'Circuit breaker ngăn cascade failure', 'Distributed tracing là bắt buộc'],
+    checklist: ['Xác định boundary theo business capability', 'Nêu strategy giao tiếp sync/async', 'Định nghĩa SLO và alert'],
+    sections: [
+      { h: 'Thiết kế boundary', content: `<p class="theory-p">Tách service theo domain và ownership của team. Tránh chia theo technical layer vì sẽ tạo phụ thuộc chéo khó vận hành.</p>` },
+      { h: 'Reliability patterns', content: `<ul class="theory-list"><li>Circuit breaker, timeout, retry budget.</li><li>Bulkhead để cô lập lỗi theo tài nguyên.</li><li>Saga pattern cho giao dịch phân tán.</li></ul>` }
+    ]
+  },
+  networking: {
+    icon: '🌐',
+    title: 'Networking Foundation',
+    difficulty: 'beginner',
+    quickReview: ['DNS phân giải domain -> IP', 'TCP đáng tin cậy hơn UDP', 'HTTP/2 multiplexing giảm head-of-line'],
+    checklist: ['Phân biệt HTTP và WebSocket', 'Mô tả TLS handshake mức cao', 'Nêu khác biệt REST/GraphQL'],
+    sections: [
+      { h: 'Network essentials', content: `<ul class="theory-list"><li>DNS lookup, TCP handshake, TLS handshake.</li><li>HTTP status code và semantic đúng.</li><li>WebSocket cho realtime hai chiều.</li></ul>` }
+    ]
+  },
+  consistency: {
+    icon: '🧠',
+    title: 'Consistency & Consensus',
+    difficulty: 'advanced',
+    quickReview: ['Strong consistency khó scale xa', 'Eventual consistency hợp hệ phân tán lớn', 'Consensus giúp leader election và commit log'],
+    checklist: ['Giải thích quorum reads/writes', 'Nêu ví dụ eventual consistency', 'Mô tả vai trò leader/follower'],
+    sections: [
+      { h: 'Consistency models', content: `<ul class="theory-list"><li><strong>Strong</strong>: đọc luôn thấy ghi mới nhất.</li><li><strong>Eventual</strong>: chấp nhận trễ đồng bộ.</li><li><strong>Causal</strong>: giữ quan hệ nhân quả.</li></ul>` },
+      { h: 'Consensus trực quan', content: `<p class="theory-p">Raft/Paxos giải bài toán nhiều node cùng quyết định một giá trị khi có lỗi mạng và lỗi node.</p>` }
+    ]
+  },
+  api: {
+    icon: '🔌',
+    title: 'API Design & Gateway',
+    difficulty: 'intermediate',
+    quickReview: ['API hợp đồng rõ ràng giúp scale team', 'Versioning cần plan sớm', 'Rate limit bảo vệ backend'],
+    checklist: ['Thiết kế endpoint và idempotency key', 'Chọn pagination strategy', 'Nêu policy authN/authZ'],
+    sections: [
+      { h: 'API principles', content: `<ul class="theory-list"><li>Resource naming nhất quán.</li><li>Status code và error contract rõ ràng.</li><li>Pagination: cursor > offset khi dữ liệu lớn.</li></ul>` },
+      { h: 'Gateway concerns', content: `<p class="theory-p">Gateway thường xử lý auth, rate limit, routing, canary, request shaping.</p>` }
+    ]
+  },
+  service_discovery: {
+    icon: '🛰️',
+    title: 'Service Discovery Advanced',
+    difficulty: 'advanced',
+    quickReview: ['Static config không phù hợp môi trường autoscale', 'Client-side và server-side discovery có trade-off khác nhau', 'Health checking và TTL là thành phần bắt buộc'],
+    checklist: ['Giải thích flow register/discover/heartbeat', 'So sánh Consul, Eureka, Kubernetes DNS', 'Đề xuất cách xử lý stale endpoints'],
+    sections: [
+      { h: 'Tại sao cần Service Discovery?', content: `<p class="theory-p">Khi dịch vụ scale động, IP/port thay đổi liên tục. Service discovery cung cấp danh sách endpoint sống để các service gọi nhau an toàn.</p><ul class="theory-list"><li><strong>Client-side discovery</strong>: client tự chọn instance (ví dụ qua SDK).</li><li><strong>Server-side discovery</strong>: qua proxy/load balancer trung gian.</li><li><strong>Registry</strong>: nơi lưu metadata endpoint và health state.</li></ul>` },
+      { h: 'Best practices vận hành', content: `<ul class="theory-list"><li>Dùng heartbeat + TTL để loại endpoint chết.</li><li>Kết hợp circuit breaker khi gọi liên service.</li><li>Giám sát tỉ lệ discover fail và stale cache.</li></ul>` }
+    ]
+  },
+  security: {
+    icon: '🔐',
+    title: 'Data Security & Hardening',
+    difficulty: 'advanced',
+    quickReview: ['Encrypt in transit và at rest là baseline', 'Principle of least privilege giảm blast radius', 'Rate limiting + WAF giảm abuse'],
+    checklist: ['Phân biệt AuthN và AuthZ', 'Nêu chiến lược secret rotation', 'Thiết kế audit log cho hành động nhạy cảm'],
+    sections: [
+      { h: 'Security foundations', content: `<ul class="theory-list"><li><strong>TLS everywhere</strong>: mã hóa kênh truyền.</li><li><strong>Encryption at rest</strong>: mã hóa dữ liệu lưu trữ.</li><li><strong>IAM/RBAC</strong>: quyền truy cập tối thiểu.</li><li><strong>Secrets management</strong>: không hardcode key, dùng vault.</li></ul>` },
+      { h: 'Security trong system design interview', content: `<p class="theory-p">Trong interview, nên nhắc rõ: auth flow (JWT/OAuth2), chống abuse (rate limit, captcha), bảo vệ PII (masking, retention), và audit logging để phục vụ forensic.</p>` }
+    ]
+  },
+  search: {
+    icon: '🔎',
+    title: 'Search Systems',
+    difficulty: 'advanced',
+    quickReview: ['Search thường dùng inverted index', 'Read path cần latency thấp và relevance ổn định', 'Indexer thường chạy async qua queue/stream'],
+    checklist: ['Mô tả ingest pipeline từ DB -> index', 'Nêu strategy reindex zero-downtime', 'Định nghĩa ranking và typo tolerance'],
+    sections: [
+      { h: 'Search architecture', content: `<ul class="theory-list"><li>Source of truth vẫn là primary DB.</li><li>Indexer xử lý thay đổi dữ liệu thành document index.</li><li>Search cluster phục vụ query full-text và ranking.</li></ul><div class="diagram-box"><div class="arch-diagram"><div class="arch-node">Primary DB</div><div class="arch-arrow">→</div><div class="arch-node primary">Change Stream / MQ</div><div class="arch-arrow">→</div><div class="arch-node secondary">Indexer</div><div class="arch-arrow">→</div><div class="arch-node warning">Search Cluster</div></div></div>` },
+      { h: 'Trade-off quan trọng', content: `<ul class="theory-list"><li>Index cập nhật gần realtime nhưng không instant consistency.</li><li>Relevance tuning cần theo domain (BM25, boosting).</li><li>Cần shard strategy để tránh hotspot query.</li></ul>` }
+    ]
+  }
+};
+
+const TOPIC_ANALYSIS = {
+  scalability: {
+    problem: ['Tải tăng nhanh gây timeout, queue backlog, CPU spike.', 'Single node trở thành bottleneck và single point of failure.'],
+    context: ['Dùng khi hệ thống có xu hướng tăng trưởng traffic theo mùa/sự kiện.', 'Đặc biệt quan trọng với read-heavy API và realtime workloads.'],
+    advantages: ['Tăng khả năng phục vụ và tính sẵn sàng.', 'Cho phép rollout theo cụm, giảm blast radius.'],
+    disadvantages: ['Tăng độ phức tạp vận hành: deployment, observability, debugging.', 'Chi phí hạ tầng cao hơn nếu autoscaling không tối ưu.'],
+    tradeoffs: ['Scale-out tăng HA nhưng thêm network hop và consistency complexity.', 'Sticky session dễ triển khai nhưng giảm khả năng failover.'],
+    cases: ['Flash sale: cần autoscale + queue buffering + cache pre-warm.', 'Campaign marketing: peak 10x trong vài giờ, ưu tiên latency guardrail.']
+  },
+  database: {
+    problem: ['Query chậm, lock contention, throughput ghi/đọc không đủ.', 'Dữ liệu vượt khả năng 1 node về RAM/disk/IOPS.'],
+    context: ['SQL cho transaction phức tạp và consistency cao.', 'NoSQL cho schema linh hoạt và scale ngang nhanh.'],
+    advantages: ['Schema + index đúng giúp giảm chi phí query rất mạnh.', 'Replication giúp read scale và disaster recovery.'],
+    disadvantages: ['Sharding tăng phức tạp query/join/operational tooling.', 'Over-index làm write amplification tăng cao.'],
+    tradeoffs: ['Strong consistency giảm anomaly nhưng có thể tăng latency.', 'Denormalization tăng tốc đọc nhưng khó đồng bộ ghi.'],
+    cases: ['Feed service: write lớn theo thời gian, cần partition theo time/user.', 'Billing: ưu tiên ACID và auditability hơn tốc độ thuần.']
+  },
+  caching: {
+    problem: ['DB chịu tải đọc cao, latency không đạt SLO.', 'Hot keys gây nghẽn và tăng tail latency.'],
+    context: ['Phù hợp read-heavy, dữ liệu thay đổi ít hơn tần suất đọc.', 'Tốt khi cần giảm cost DB và bảo vệ peak traffic.'],
+    advantages: ['Giảm độ trễ mạnh và giảm chi phí DB.', 'Tăng khả năng chịu burst traffic.'],
+    disadvantages: ['Stale data, invalidation khó, cache stampede.', 'Tăng complexity do nhiều tầng cache.'],
+    tradeoffs: ['TTL dài tăng hit-rate nhưng rủi ro stale cao.', 'Write-through nhất quán hơn nhưng write latency cao hơn.'],
+    cases: ['Product detail: CDN + Redis cache-aside + fallback DB.', 'Leaderboard realtime: cache-first + periodic reconciliation.']
+  },
+  messagequeue: {
+    problem: ['Tác vụ nặng làm API sync chậm và dễ timeout.', 'Spike traffic làm downstream sập dây chuyền.'],
+    context: ['Dùng khi cần async processing, fan-out event, retryable workflow.', 'Phù hợp event-driven architecture và decoupled services.'],
+    advantages: ['Buffer traffic và tách producer/consumer.', 'Hỗ trợ retry, DLQ, backpressure.'],
+    disadvantages: ['Khó debug luồng event và eventual consistency.', 'Cần quản lý ordering, duplicate, idempotency.'],
+    tradeoffs: ['At-least-once tăng reliability nhưng cần chống duplicate.', 'Ordering strict giảm throughput.'],
+    cases: ['Order pipeline: create order -> payment -> inventory -> notification.', 'Analytics ingestion: stream event lớn cần consumer group scale-out.']
+  },
+  microservices: {
+    problem: ['Monolith khó scale team và release độc lập.', 'Một lỗi nhỏ có thể ảnh hưởng toàn hệ nếu coupling cao.'],
+    context: ['Hợp khi domain đủ lớn và team ownership rõ.', 'Không phù hợp khi sản phẩm còn nhỏ/chưa ổn định domain.'],
+    advantages: ['Deploy độc lập theo service.', 'Fault isolation tốt hơn khi thiết kế đúng boundary.'],
+    disadvantages: ['Distributed complexity: tracing, retries, data consistency.', 'Chi phí platform và DevOps cao.'],
+    tradeoffs: ['Tách service tăng autonomy nhưng tăng network overhead.', 'Sync calls đơn giản nhưng dễ cascade failure.'],
+    cases: ['Marketplace: catalog, payment, shipping tách domain rõ.', 'Super-app: cần gateway + BFF để tối ưu client experience.']
+  },
+  networking: {
+    problem: ['Latency cao do RTT, DNS delay, handshake nhiều bước.', 'Connection management kém gây timeout/packet loss impact.'],
+    context: ['Bắt buộc hiểu khi thiết kế API public hoặc realtime service.', 'Quan trọng khi multi-region và global user distribution.'],
+    advantages: ['Nắm đúng network stack giúp tìm bottleneck nhanh.', 'Thiết kế protocol đúng giảm chi phí và lỗi runtime.'],
+    disadvantages: ['Chi tiết thấp dễ gây quá tải khi mới học.', 'Khó tái hiện lỗi network trong môi trường local.'],
+    tradeoffs: ['WebSocket realtime tốt nhưng giữ connection tốn tài nguyên.', 'HTTP polling dễ vận hành hơn nhưng kém realtime.'],
+    cases: ['Chat realtime: gateway WebSocket + fallback long polling.', 'Global API: DNS-based routing + nearest region strategy.']
+  },
+  consistency: {
+    problem: ['Data đọc/ghi không đồng bộ giữa node khi partition.', 'Conflict state giữa nhiều writer.'],
+    context: ['Quan trọng cho payment/order/inventory và workflow phân tán.', 'Dùng khi có replication đa node/đa region.'],
+    advantages: ['Mô hình consistency rõ giúp giảm bug dữ liệu nghiêm trọng.', 'Consensus giúp leader election và commit an toàn.'],
+    disadvantages: ['Strong consistency khó scale xa và tăng latency.', 'Consensus protocol phức tạp để vận hành/quan sát.'],
+    tradeoffs: ['Chọn C hay A dưới partition tuỳ domain criticality.', 'Eventual consistency scale tốt nhưng cần conflict handling.'],
+    cases: ['Inventory reservation: ưu tiên consistency để tránh oversell.', 'Social reactions: eventual consistency chấp nhận được.']
+  },
+  api: {
+    problem: ['API thiếu chuẩn gây client break và khó maintain.', 'Không có versioning/rate limit làm hệ dễ quá tải.'],
+    context: ['Áp dụng cho public API, microservices internal contract.', 'Đặc biệt quan trọng khi nhiều client platform cùng dùng API.'],
+    advantages: ['Contract rõ giúp scale team và giảm integration bugs.', 'Rate limiting bảo vệ downstream.'],
+    disadvantages: ['Governance quá chặt có thể làm chậm delivery.', 'Versioning kém làm technical debt tăng nhanh.'],
+    tradeoffs: ['REST dễ cache nhưng có thể over-fetch.', 'GraphQL linh hoạt nhưng khó cache/complexity control hơn.'],
+    cases: ['Mobile app cần backward compatibility theo version.', 'Partner API cần quota + key rotation + audit logs.']
+  },
+  service_discovery: {
+    problem: ['Instance thay đổi động khiến endpoint cũ bị stale.', 'Service-to-service call thất bại do registry inconsistency.'],
+    context: ['Dùng trong autoscaling/kubernetes/microservices platform.', 'Bắt buộc khi IP không cố định.'],
+    advantages: ['Tự động hóa endpoint resolution.', 'Giảm hardcode config và lỗi deploy.'],
+    disadvantages: ['Registry outage ảnh hưởng diện rộng.', 'Cần cơ chế cache + fallback đúng.'],
+    tradeoffs: ['Client-side linh hoạt hơn nhưng client phức tạp hơn.', 'Server-side dễ dùng hơn nhưng thêm hop proxy.'],
+    cases: ['K8s DNS discovery cho nội bộ cluster.', 'Service mesh điều phối routing và health-aware balancing.']
+  },
+  security: {
+    problem: ['Rò rỉ dữ liệu nhạy cảm, credential leakage, abuse traffic.', 'Privilege escalation do phân quyền lỏng lẻo.'],
+    context: ['Luôn bắt buộc với PII, payment, compliance domain.', 'Cần nhắc ngay từ thiết kế, không để cuối dự án.'],
+    advantages: ['Giảm rủi ro pháp lý và tổn thất vận hành.', 'Tăng độ tin cậy sản phẩm với user/doanh nghiệp.'],
+    disadvantages: ['Tăng chi phí phát triển và vận hành.', 'Một số control có thể tăng latency nhẹ.'],
+    tradeoffs: ['Bảo mật mạnh hơn có thể giảm DX/UX nếu triển khai cứng.', 'Audit đầy đủ tăng chi phí lưu trữ/log processing.'],
+    cases: ['Auth service: token rotation + mTLS + least privilege.', 'PII pipeline: encryption, masking, retention policy rõ ràng.']
+  },
+  search: {
+    problem: ['SQL LIKE không đáp ứng full-text và relevance tốt ở scale lớn.', 'Cập nhật index chậm gây kết quả tìm kiếm cũ.'],
+    context: ['Dùng khi cần text search, typo tolerance, ranking.', 'Phù hợp catalog/product/search-heavy platform.'],
+    advantages: ['Tối ưu query full-text nhanh và linh hoạt.', 'Có scoring/ranking theo domain signal.'],
+    disadvantages: ['Dual-write/index-sync complexity.', 'Cần reindex strategy khi mapping thay đổi.'],
+    tradeoffs: ['Near-real-time index tăng freshness nhưng tốn tài nguyên.', 'Strong consistency với source DB khó đạt tuyệt đối.'],
+    cases: ['E-commerce search: relevance + synonym + typo tolerance.', 'Knowledge base search: ranking theo recency + quality signals.']
+  }
+};
+
+function renderTopicAnalysis(topicId) {
+  const a = TOPIC_ANALYSIS[topicId];
+  if (!a) return '';
+  const block = (title, items) => `
+    <div class="analysis-card">
+      <div class="analysis-title">${title}</div>
+      <ul class="analysis-list">${items.map((x) => `<li>• ${x}</li>`).join('')}</ul>
+    </div>
+  `;
+  return `
+    <div class="theory-section">
+      <div class="theory-h2"><span class="dot"></span>Phân Tích Thực Chiến</div>
+      <div class="analysis-grid">
+        ${block('VẤN ĐỀ CẦN GIẢI', a.problem)}
+        ${block('CONTEXT ÁP DỤNG', a.context)}
+        ${block('ƯU ĐIỂM', a.advantages)}
+        ${block('NHƯỢC ĐIỂM', a.disadvantages)}
+        ${block('TRADE-OFF', a.tradeoffs)}
+        ${block('CASE THỰC TẾ', a.cases)}
+      </div>
+    </div>
+  `;
+}
+
+const THEORY_COVERAGE = [
+  { node: 'System Design Introduction', status: 'covered', mapTo: 'scalability' },
+  { node: 'Approach System Design Interview', status: 'covered', mapTo: 'microservices' },
+  { node: 'Performance vs Scalability', status: 'covered', mapTo: 'scalability' },
+  { node: 'Latency vs Throughput', status: 'covered', mapTo: 'scalability' },
+  { node: 'Availability vs Consistency', status: 'covered', mapTo: 'consistency' },
+  { node: 'CAP Theorem', status: 'covered', mapTo: 'consistency' },
+  { node: 'Consistency Patterns', status: 'covered', mapTo: 'consistency' },
+  { node: 'Availability Patterns', status: 'covered', mapTo: 'microservices' },
+  { node: 'DNS', status: 'covered', mapTo: 'networking' },
+  { node: 'CDN', status: 'covered', mapTo: 'caching' },
+  { node: 'Load Balancers', status: 'covered', mapTo: 'scalability' },
+  { node: 'LB vs Reverse Proxy', status: 'covered', mapTo: 'scalability' },
+  { node: 'Load Balancing Algorithms', status: 'covered', mapTo: 'scalability' },
+  { node: 'Databases SQL vs NoSQL', status: 'covered', mapTo: 'database' },
+  { node: 'Replication', status: 'covered', mapTo: 'database' },
+  { node: 'Sharding', status: 'covered', mapTo: 'database' },
+  { node: 'Caching Strategies', status: 'covered', mapTo: 'caching' },
+  { node: 'Message Queues', status: 'covered', mapTo: 'messagequeue' },
+  { node: 'Microservices', status: 'covered', mapTo: 'microservices' },
+  { node: 'Service Discovery', status: 'covered', mapTo: 'service_discovery' },
+  { node: 'Consensus (Raft/Paxos)', status: 'covered', mapTo: 'consistency' },
+  { node: 'Observability', status: 'covered', mapTo: 'microservices' },
+  { node: 'API Design', status: 'covered', mapTo: 'api' },
+  { node: 'Background Jobs', status: 'covered', mapTo: 'messagequeue' },
+  { node: 'Data Security', status: 'covered', mapTo: 'security' },
+  { node: 'Search Systems', status: 'covered', mapTo: 'search' }
+];
+
+const LEARNING_REFERENCES = {
+  core: [
+    { title: 'Roadmap.sh - System Design', url: 'https://roadmap.sh/system-design' },
+    { title: 'System Design Primer (GitHub)', url: 'https://github.com/donnemartin/system-design-primer' },
+    { title: 'Designing Data-Intensive Applications (book)', url: 'https://dataintensive.net/' }
+  ],
+  networking: [
+    { title: 'Cloudflare Learning - DNS', url: 'https://www.cloudflare.com/learning/dns/what-is-dns/' },
+    { title: 'MDN - HTTP Overview', url: 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview' }
+  ],
+  caching: [
+    { title: 'AWS Caching Best Practices', url: 'https://docs.aws.amazon.com/whitepapers/latest/database-caching-strategies-using-redis/database-caching-strategies-using-redis.html' }
+  ],
+  database: [
+    { title: 'PostgreSQL Docs - Indexes', url: 'https://www.postgresql.org/docs/current/indexes.html' },
+    { title: 'CAP Theorem Explained (Microsoft)', url: 'https://learn.microsoft.com/en-us/azure/architecture/patterns/cqrs' }
+  ],
+  messagequeue: [
+    { title: 'Kafka Documentation', url: 'https://kafka.apache.org/documentation/' },
+    { title: 'RabbitMQ Tutorials', url: 'https://www.rabbitmq.com/tutorials.html' }
+  ],
+  microservices: [
+    { title: 'Microservices Patterns (Chris Richardson)', url: 'https://microservices.io/patterns/index.html' },
+    { title: 'Google SRE Book', url: 'https://sre.google/sre-book/table-of-contents/' }
+  ],
+  api: [
+    { title: 'Microsoft API Guidelines', url: 'https://github.com/microsoft/api-guidelines' },
+    { title: 'RFC 9110 HTTP Semantics', url: 'https://www.rfc-editor.org/rfc/rfc9110' }
+  ],
+  consistency: [
+    { title: 'Raft Paper', url: 'https://raft.github.io/raft.pdf' },
+    { title: 'Paxos Made Simple', url: 'https://lamport.azurewebsites.net/pubs/paxos-simple.pdf' }
+  ],
+  security: [
+    { title: 'OWASP Top 10', url: 'https://owasp.org/www-project-top-ten/' },
+    { title: 'NIST Zero Trust', url: 'https://csrc.nist.gov/publications/detail/sp/800-207/final' }
+  ],
+  search: [
+    { title: 'Elasticsearch Guide', url: 'https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html' }
+  ],
+  service_discovery: [
+    { title: 'Kubernetes Service Discovery', url: 'https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/' }
+  ]
+};
+
+const DRILL_ANSWER_TEMPLATES = {
+  scalability: [
+    'Định nghĩa SLO latency (p95/p99), throughput (QPS), error rate trước khi thiết kế.',
+    'Trình bày baseline: LB -> stateless app -> DB; nêu bottleneck đầu tiên.',
+    'Nêu 2 phương án scale và trade-off chi phí vs độ phức tạp vận hành.'
+  ],
+  database: [
+    'Xác định access pattern chính: read-heavy hay write-heavy.',
+    'Chọn schema + index theo query quan trọng nhất, không theo cảm tính.',
+    'Giải thích khi nào dùng replication vs sharding với số liệu ước lượng.'
+  ],
+  caching: [
+    'Mô tả cache key, TTL và cơ chế invalidation cụ thể.',
+    'Nêu rõ consistency model của read-after-write.',
+    'Có phương án chống cache stampede và hot key.'
+  ],
+  messagequeue: [
+    'Chốt delivery semantics: at-most-once, at-least-once hay exactly-once.',
+    'Thiết kế retry + DLQ + idempotency key để chống xử lý trùng.',
+    'Giám sát queue depth, consumer lag và failure rate.'
+  ],
+  microservices: [
+    'Xác định service boundary theo business capability.',
+    'Nêu cơ chế resiliency: timeout, retry budget, circuit breaker.',
+    'Định nghĩa observability tối thiểu: logs, metrics, tracing.'
+  ],
+  networking: [
+    'Vẽ đầy đủ flow DNS -> TLS -> request/response.',
+    'Giải thích vì sao chọn HTTP polling/WebSocket theo use case.',
+    'Nêu rủi ro network và cách degrade an toàn.'
+  ],
+  consistency: [
+    'Nêu model consistency của từng luồng dữ liệu.',
+    'Giải thích quorum hoặc leader-based replication bằng ví dụ.',
+    'Đưa ra tình huống partition và quyết định ưu tiên C hay A.'
+  ],
+  api: [
+    'Viết endpoint + request/response mẫu + status codes.',
+    'Thêm idempotency cho API ghi quan trọng.',
+    'Nêu versioning plan và backward compatibility.'
+  ],
+  security: [
+    'Nêu authN/authZ cụ thể cho từng actor.',
+    'Bảo vệ dữ liệu nhạy cảm: encrypt, mask, retention policy.',
+    'Thêm audit log + alert cho hành vi bất thường.'
+  ],
+  search: [
+    'Nêu source of truth và pipeline đồng bộ index.',
+    'Mô tả chiến lược ranking + typo tolerance.',
+    'Đề xuất reindex zero-downtime.'
+  ],
+  service_discovery: [
+    'Mô tả registry, heartbeat, health-check, TTL.',
+    'So sánh client-side vs server-side discovery theo trade-off.',
+    'Nêu cơ chế fallback khi registry gặp sự cố.'
+  ]
+};
+
+function getTopicReferences(topicId) {
+  return [...(LEARNING_REFERENCES[topicId] || []), ...LEARNING_REFERENCES.core];
+}
+
+function getDrillTemplate(topicId) {
+  return DRILL_ANSWER_TEMPLATES[topicId] || [
+    'Nêu requirement rõ ràng (functional và non-functional).',
+    'Đưa ra kiến trúc baseline và lý do lựa chọn.',
+    'Phân tích trade-off và kế hoạch quan sát/vận hành.'
+  ];
+}
+
+const PRACTICE_LABS = [
+  {
+    title: 'Lab 1: Thiết kế News Feed cơ bản',
+    level: 'intermediate',
+    focus: 'API + Data model + Cache',
+    goal: 'Dựng bản thiết kế cho 10M MAU, 50k QPS đọc feed.',
+    tasks: ['Viết functional + non-functional requirements', 'Ước lượng QPS và storage 1 năm', 'Chọn fan-out on write hay on read', 'Vẽ luồng cache + DB + queue'],
+    deliverables: ['1 sơ đồ kiến trúc', '1 bảng trade-off', '5 API endpoints chính'],
+    mentor: ['Nếu user có nhiều followings, fan-out on read thường tiết kiệm hơn', 'Cache feed theo user + cursor để giảm latency', 'Đừng quên strategy cho hot key celebrity']
+  },
+  {
+    title: 'Lab 2: URL Shortener Production-ready',
+    level: 'intermediate',
+    focus: 'ID generation + hot path optimization',
+    goal: 'Thiết kế redirect p95 < 20ms với 5B redirect/day.',
+    tasks: ['Chọn thuật toán generate short ID', 'Thiết kế read path có cache nhiều tầng', 'Xử lý custom alias + collision', 'Thiết kế analytics pipeline async'],
+    deliverables: ['Sơ đồ read/write path', 'DB schema và index', 'Kế hoạch anti-abuse cơ bản'],
+    mentor: ['Read path quan trọng nhất, tối ưu trước', 'Dùng idempotent write khi tạo short URL', 'Analytics tách async qua queue để không chậm redirect']
+  },
+  {
+    title: 'Lab 3: Rate Limiter phân tán',
+    level: 'intermediate',
+    focus: 'Algorithms + distributed counter',
+    goal: 'Giới hạn theo user/IP/key với độ trễ cực thấp.',
+    tasks: ['So sánh token bucket và sliding window', 'Thiết kế lưu trữ counter trên Redis', 'Xử lý clock skew và race condition', 'Bổ sung header Retry-After chuẩn'],
+    deliverables: ['Pseudo-code limiter', 'Kịch bản test tải cao', 'Chiến lược degrade khi Redis lỗi'],
+    mentor: ['Lua script giúp thao tác atomic trên Redis', 'Cần local fallback để tránh hard dependency', 'Giới hạn theo nhiều chiều để chống abuse']
+  },
+  {
+    title: 'Lab 4: Monitoring & Alerting Stack',
+    level: 'advanced',
+    focus: 'Observability + reliability',
+    goal: 'Xây monitoring plan cho hệ thống microservices.',
+    tasks: ['Định nghĩa SLI/SLO cho API chính', 'Thiết kế pipeline logs/metrics/traces', 'Tạo alert policy giảm false positive', 'Đề xuất dashboard cho on-call'],
+    deliverables: ['Bảng SLO', 'Danh sách alert critical', 'Runbook sự cố top 3'],
+    mentor: ['Alert nên bám SLO burn rate', 'Log không thay thế metric', 'Trace rất hữu ích cho vấn đề latency chéo service']
+  }
+];
+
+const QUIZ_BANK = [
+  { topic: 'scalability', q: 'Khi nào nên ưu tiên horizontal scaling?', options: ['Khi cần tăng RAM nhanh', 'Khi cần HA và mở rộng dài hạn', 'Khi hệ thống chạy đơn luồng', 'Khi chưa có monitoring'], correct: 1, explain: 'Scale out giúp fault tolerance và tăng năng lực theo cụm node.' },
+  { topic: 'networking', q: 'DNS trong request flow dùng để làm gì?', options: ['Mã hóa payload', 'Ánh xạ domain sang IP', 'Nén response', 'Cấp phát token'], correct: 1, explain: 'DNS giúp client tìm địa chỉ IP trước khi kết nối.' },
+  { topic: 'database', q: 'Sharding giải quyết vấn đề chính nào?', options: ['Nén dữ liệu tốt hơn', 'Giảm độ phức tạp query', 'Phân tán dữ liệu để vượt giới hạn 1 node', 'Loại bỏ replication'], correct: 2, explain: 'Sharding giúp scale dung lượng và throughput.' },
+  { topic: 'caching', q: 'Pattern cache phổ biến nhất trong app layer?', options: ['Write-behind', 'Cache-aside', 'Refresh-ahead', 'Read-through only'], correct: 1, explain: 'Cache-aside cho phép app chủ động kiểm soát hit/miss.' },
+  { topic: 'messagequeue', q: 'Lợi ích cốt lõi của message queue?', options: ['Giảm DB schema', 'Tăng coupling', 'Tách producer/consumer', 'Loại bỏ retry'], correct: 2, explain: 'Queue giúp decouple và hấp thụ spike traffic.' },
+  { topic: 'consistency', q: 'Khi có network partition, CAP bắt buộc giữ yếu tố nào?', options: ['Consistency', 'Availability', 'Partition tolerance', 'Durability'], correct: 2, explain: 'P là ràng buộc thực tế trong distributed system.' },
+  { topic: 'api', q: 'Pagination nào phù hợp dữ liệu biến động lớn?', options: ['Offset', 'Cursor', 'Page number', 'Random page'], correct: 1, explain: 'Cursor pagination ổn định hơn khi dữ liệu thay đổi.' },
+  { topic: 'microservices', q: 'Circuit breaker OPEN sẽ...', options: ['Cho request qua', 'Fail fast', 'Retry vô hạn', 'Scale DB'], correct: 1, explain: 'OPEN chặn gọi downstream để tránh cascade failure.' },
+  { topic: 'reliability', q: 'SLO dùng để...', options: ['Đo doanh thu', 'Đặt mục tiêu độ tin cậy', 'Theo dõi HR', 'Thay thế testing'], correct: 1, explain: 'SLO định nghĩa mục tiêu reliability.' },
+  { topic: 'estimation', q: 'Trong estimation nên làm đầu tiên?', options: ['Logo', 'QPS và data size', 'Màu dashboard', 'Số dòng code'], correct: 1, explain: 'QPS và data size là nền tảng thiết kế.' },
+
+  { topic: 'networking', q: 'TCP khác UDP chính ở điểm nào?', options: ['TCP không có handshake', 'UDP đảm bảo thứ tự', 'TCP đảm bảo delivery/ordering', 'UDP chậm hơn mọi trường hợp'], correct: 2, explain: 'TCP đảm bảo truyền tin cậy, UDP nhẹ và nhanh hơn.' },
+  { topic: 'networking', q: 'WebSocket phù hợp nhất cho?', options: ['Batch job ban đêm', 'Realtime chat/game', 'Lưu file lớn', 'Backup'], correct: 1, explain: 'WebSocket cho kết nối hai chiều thời gian thực.' },
+  { topic: 'scalability', q: 'Load balancer thuật toán nào ưu tiên server ít kết nối?', options: ['Round robin', 'Least connections', 'IP hash', 'Random'], correct: 1, explain: 'Least connections gửi request đến node ít kết nối nhất.' },
+  { topic: 'scalability', q: 'Sticky session có nhược điểm gì?', options: ['Giảm cache hit', 'Khó scale và failover', 'Tăng durability', 'Giảm latency network'], correct: 1, explain: 'Sticky session tạo phụ thuộc vào một node.' },
+  { topic: 'database', q: 'Read replica chủ yếu giúp?', options: ['Scale read', 'Scale write', 'Tạo schema tự động', 'Xóa lock'], correct: 0, explain: 'Read replica tăng throughput đọc.' },
+  { topic: 'database', q: 'Index giúp gì?', options: ['Giảm storage', 'Tăng tốc truy vấn', 'Tăng write throughput mọi lúc', 'Loại bỏ normalization'], correct: 1, explain: 'Index tối ưu truy vấn đổi lại tốn thêm chi phí ghi.' },
+  { topic: 'database', q: 'OLTP đặc trưng là?', options: ['Query analytics dài', 'Transaction ngắn, nhiều request', 'Chỉ dùng columnar DB', 'Không cần index'], correct: 1, explain: 'OLTP phục vụ giao dịch online độ trễ thấp.' },
+  { topic: 'caching', q: 'Rủi ro lớn nhất của cache là?', options: ['Stale data', 'Không dùng RAM', 'Không thể scale', 'Không có eviction'], correct: 0, explain: 'Stale data cần xử lý TTL/invalidation hợp lý.' },
+  { topic: 'caching', q: 'Write-through phù hợp khi?', options: ['Ưu tiên nhất quán read sau write', 'Chỉ đọc hiếm', 'Không có DB', 'Muốn bỏ cache'], correct: 0, explain: 'Write-through hy sinh write latency để tăng consistency.' },
+  { topic: 'caching', q: 'Eviction LFU phù hợp với?', options: ['Data truy cập theo tần suất ổn định', 'Mọi key truy cập ngang nhau', 'Chỉ có TTL', 'Write-heavy'], correct: 0, explain: 'LFU giữ lại key được truy cập thường xuyên.' },
+  { topic: 'messagequeue', q: 'DLQ dùng để?', options: ['Lưu message lỗi để xử lý sau', 'Tăng tốc producer', 'Giảm payload', 'Xóa retry'], correct: 0, explain: 'DLQ lưu message fail nhiều lần để phân tích.' },
+  { topic: 'messagequeue', q: 'Idempotency quan trọng khi?', options: ['At-least-once delivery', 'At-most-once delivery', 'Không có queue', 'Single node'], correct: 0, explain: 'At-least-once có thể duplicate, cần idempotency.' },
+  { topic: 'messagequeue', q: 'Consumer lag nghĩa là?', options: ['Producer chậm', 'Consumer xử lý chậm hơn tốc độ sinh message', 'Queue bị xóa', 'Không có partition'], correct: 1, explain: 'Lag là khoảng cách giữa head offset và committed offset.' },
+  { topic: 'api', q: 'HTTP 429 thường dùng khi?', options: ['Unauthorized', 'Rate limit exceeded', 'Server crash', 'Resource not found'], correct: 1, explain: '429 báo vượt giới hạn tốc độ request.' },
+  { topic: 'api', q: 'Idempotent method trong REST là?', options: ['POST', 'PATCH', 'PUT', 'CONNECT'], correct: 2, explain: 'PUT idempotent nếu cùng payload và endpoint.' },
+  { topic: 'api', q: 'API versioning thường đặt ở đâu?', options: ['URL path/header', 'DNS only', 'Database schema', 'Load balancer'], correct: 0, explain: 'Path hoặc header là cách phổ biến.' },
+  { topic: 'consistency', q: 'Eventual consistency nghĩa là?', options: ['Luôn đọc mới nhất', 'Không bao giờ đồng bộ', 'Cuối cùng các node sẽ hội tụ', 'Không hỗ trợ replication'], correct: 2, explain: 'Eventual consistency chấp nhận độ trễ đồng bộ.' },
+  { topic: 'consistency', q: 'Quorum read/write giúp?', options: ['Tăng durability và consistency cân bằng', 'Loại bỏ replication', 'Giảm số node', 'Không cần leader'], correct: 0, explain: 'Quorum chọn số node đủ lớn để giảm inconsistency.' },
+  { topic: 'consistency', q: 'Strong consistency thường đánh đổi gì?', options: ['Độ trễ và khả năng chịu partition', 'Bảo mật', 'Dung lượng disk', 'Team size'], correct: 0, explain: 'Strong consistency thường tăng latency hoặc giảm availability.' },
+  { topic: 'microservices', q: 'API Gateway thường không làm gì?', options: ['Auth', 'Routing', 'SQL query join cross-service', 'Rate limit'], correct: 2, explain: 'Gateway không nên gánh nghiệp vụ data join phức tạp.' },
+  { topic: 'microservices', q: 'Service discovery dùng để?', options: ['Tìm instance service động', 'Giảm TTL cache', 'Nén dữ liệu', 'Thay MQ'], correct: 0, explain: 'Service discovery giúp locate instance khi scale động.' },
+  { topic: 'microservices', q: 'Saga pattern dùng cho?', options: ['Distributed transactions', 'TLS handshake', 'Static file delivery', 'Load balancing'], correct: 0, explain: 'Saga điều phối nhiều local transaction qua compensation.' },
+  { topic: 'reliability', q: 'SLI là gì?', options: ['Metric đo chất lượng dịch vụ', 'Cam kết pháp lý', 'Mức lương', 'Loại cache'], correct: 0, explain: 'SLI là chỉ số đo trực tiếp behavior của system.' },
+  { topic: 'reliability', q: 'Error budget liên quan đến?', options: ['Số bug code style', 'Mức downtime chấp nhận theo SLO', 'Chi phí cloud', 'Thời gian deploy'], correct: 1, explain: 'Error budget là phần lỗi cho phép trước khi vượt SLO.' },
+  { topic: 'reliability', q: 'Tracing giúp tốt nhất cho?', options: ['Theo dõi path request qua nhiều service', 'Nén ảnh', 'Scale DB write', 'Cấu hình DNS'], correct: 0, explain: 'Tracing cho thấy bottleneck liên service.' },
+  { topic: 'estimation', q: '50k QPS, payload 2KB, băng thông tối thiểu?', options: ['~100 MB/s', '~10 MB/s', '~1 GB/s', '~2 MB/s'], correct: 0, explain: '50k*2KB = 100,000KB/s xấp xỉ 100MB/s.' },
+  { topic: 'estimation', q: '1 tỷ bản ghi, mỗi bản ghi 200B, dung lượng thô?', options: ['~20 GB', '~200 GB', '~2 TB', '~2 GB'], correct: 1, explain: '1e9*200B = 200e9B ~ 200GB chưa tính index/replica.' },
+  { topic: 'estimation', q: 'Trong interview, vì sao cần estimation sớm?', options: ['Để chọn font UI', 'Để chọn scale phù hợp cho từng thành phần', 'Để viết test case', 'Để tối ưu syntax'], correct: 1, explain: 'Estimation giúp thiết kế đúng quy mô thay vì over/under-engineer.' },
+
+  { topic: 'networking', q: 'TLS chủ yếu nhằm mục đích?', options: ['Mã hóa và xác thực kết nối', 'Scale database', 'Queue message', 'Replicate cache'], correct: 0, explain: 'TLS bảo mật dữ liệu truyền qua mạng.' },
+  { topic: 'networking', q: 'HTTP status 503 nghĩa là?', options: ['Unauthorized', 'Service unavailable', 'Bad request', 'Not modified'], correct: 1, explain: '503 dùng khi service tạm thời không khả dụng.' },
+  { topic: 'scalability', q: 'Reverse proxy thường đặt trước?', options: ['Client browser', 'Application servers', 'Database', 'Queue consumers'], correct: 1, explain: 'Reverse proxy đứng trước app servers để route/terminate TLS/caching.' },
+  { topic: 'scalability', q: 'Auto scaling theo metric nào trực tiếp phản ánh trải nghiệm?', options: ['Build time', 'p95 latency', 'Lines of code', 'Disk model'], correct: 1, explain: 'p95 latency gần user experience hơn CPU đơn thuần.' },
+  { topic: 'database', q: 'Denormalization được dùng khi?', options: ['Cần giảm join để tăng tốc đọc', 'Luôn luôn', 'Không bao giờ', 'Chỉ cho cache'], correct: 0, explain: 'Denormalization đánh đổi storage/consistency để tối ưu read.' },
+  { topic: 'database', q: 'Write amplification thường tăng khi?', options: ['Thêm nhiều index', 'Giảm replication', 'Tắt WAL', 'Dùng cache'], correct: 0, explain: 'Nhiều index làm chi phí ghi tăng.' },
+  { topic: 'caching', q: 'Cache key tốt cần điều gì?', options: ['Ổn định, xác định duy nhất, dễ invalidation', 'Random hoàn toàn', 'Không chứa phiên bản', 'Dựa vào timestamp hiện tại'], correct: 0, explain: 'Key tốt giúp tránh collision và hỗ trợ invalidation.' },
+  { topic: 'caching', q: 'Cache stampede là?', options: ['Nhiều request cùng miss và đập DB', 'Cache đầy', 'Cache không có TTL', 'Cache dùng LFU'], correct: 0, explain: 'Dùng lock/request coalescing để giảm stampede.' },
+  { topic: 'messagequeue', q: 'Pub/Sub phù hợp khi?', options: ['Một event cần nhiều consumer', 'Một task chỉ một worker', 'Không có retry', 'Chỉ có DB'], correct: 0, explain: 'Pub/Sub cho phép fan-out event.' },
+  { topic: 'messagequeue', q: 'At-most-once delivery nghĩa là?', options: ['Có thể mất message nhưng không duplicate', 'Không thể mất message', 'Luôn duplicate', 'Không có ack'], correct: 0, explain: 'At-most-once ưu tiên không lặp hơn độ tin cậy.' },
+  { topic: 'api', q: 'Retry-safe cho POST thường cần gì?', options: ['Idempotency key', 'DNS cache', 'Long timeout', 'Bigger payload'], correct: 0, explain: 'Idempotency key tránh tạo dữ liệu trùng khi retry.' },
+  { topic: 'api', q: 'GraphQL mạnh ở điểm nào?', options: ['Client lấy đúng field cần', 'Luôn nhanh hơn REST', 'Không cần caching', 'Không cần schema'], correct: 0, explain: 'GraphQL linh hoạt query theo nhu cầu client.' },
+  { topic: 'consistency', q: 'Leader election trong Raft nhằm?', options: ['Chọn node điều phối log commit', 'Nén dữ liệu', 'Tăng cache hit', 'Xóa partition'], correct: 0, explain: 'Leader đảm nhiệm replicate log tới followers.' },
+  { topic: 'consistency', q: 'Split brain gây hậu quả?', options: ['Nhiều leader gây xung đột dữ liệu', 'Tăng throughput chắc chắn', 'Giảm latency', 'Không ảnh hưởng'], correct: 0, explain: 'Split brain có thể làm diverge state.' },
+  { topic: 'microservices', q: 'Bulkhead pattern giúp?', options: ['Cô lập tài nguyên để lỗi không lan', 'Tăng payload', 'Mã hóa traffic', 'Thay consensus'], correct: 0, explain: 'Bulkhead giới hạn ảnh hưởng của failure.' },
+  { topic: 'microservices', q: 'Timeout quá dài trong call giữa service dễ gây?', options: ['Thread/resource exhaustion', 'Giảm lỗi', 'Tăng consistency', 'Tăng cache hit'], correct: 0, explain: 'Timeout dài làm nghẽn tài nguyên khi downstream lỗi.' },
+  { topic: 'reliability', q: 'Canary release nhằm?', options: ['Giảm rủi ro rollout', 'Tăng kích thước DB', 'Giảm logging', 'Thay MQ'], correct: 0, explain: 'Canary rollout trên phần nhỏ traffic trước khi mở rộng.' },
+  { topic: 'reliability', q: 'Chaos engineering giúp?', options: ['Kiểm chứng khả năng chịu lỗi chủ động', 'Giảm cần monitoring', 'Loại bỏ test', 'Tăng schema'], correct: 0, explain: 'Chaos thử lỗi có kiểm soát để tăng resilience.' },
+  { topic: 'estimation', q: 'Có 5M DAU, mỗi user 20 request/ngày. QPS trung bình xấp xỉ?', options: ['~1157', '~115', '~11,570', '~11'], correct: 0, explain: '100M req/day / 86400 ≈ 1157 QPS.' },
+  { topic: 'estimation', q: 'Thiết kế capacity nên thêm buffer vì?', options: ['Traffic có peak và sai số ước lượng', 'Tăng màu sắc dashboard', 'Giảm số team', 'Bớt cần cache'], correct: 0, explain: 'Buffer giúp an toàn trước peak và growth bất ngờ.' }
+];
+
+const EXERCISES = [
+  {
+    title: 'Thiết kế URL Shortener',
+    level: 'intermediate',
+    emoji: '🔗',
+    scale: '100M URLs, 10B redirects/day',
+    requirements: ['Create short URL', 'Redirect latency < 10ms', 'Custom alias', 'Click analytics', '99.9% availability'],
+    hints: ['Base62 hoặc Snowflake ID', 'Read-heavy nên ưu tiên cache', 'Analytics xử lý async'],
+    framework: ['Requirements: clarify custom domain, expiration, abuse control', 'Estimation: redirects/day, storage for mappings + analytics', 'High level: API + cache + KV store + queue + analytics workers', 'Deep dive: collision handling, cache invalidation, hot key mitigation', 'Trade-off: strong consistency cho create, eventual consistency cho analytics'],
+    sample: ['Write path: API -> ID service -> KV store -> cache warmup', 'Read path: LB -> app -> cache hit; miss thì đọc KV rồi set cache', 'Analytics: redirect event -> queue -> stream processing -> OLAP store']
+  },
+  {
+    title: 'Thiết kế Instagram Feed',
+    level: 'advanced',
+    emoji: '📸',
+    scale: '1B users, 100M posts/day',
+    requirements: ['Upload media', 'Personalized feed', 'Like/comment', 'Story TTL 24h', 'Push notification'],
+    hints: ['Object storage + CDN cho media', 'Fan-out strategy theo loại user', 'Ranking service tách riêng'],
+    framework: ['Requirements: feed freshness, ranking quality, latency budget', 'Estimation: post volume, read/write ratio, storage growth', 'High level: feed service + graph service + ranking + cache + MQ', 'Deep dive: celebrity problem, hybrid fan-out, cache invalidation'],
+    sample: ['Hybrid model: fan-out on write cho users thường, on read cho celebrity', 'Feed cache theo user + cursor, fallback read model từ timeline store', 'Notification và activity stream xử lý qua Kafka']
+  },
+  {
+    title: 'Thiết kế Rate Limiter',
+    level: 'intermediate',
+    emoji: '🚦',
+    scale: '10K services, 1M requests/sec',
+    requirements: ['Per-user/per-IP/per-key', 'Multi window rules', 'Distributed', 'Low latency', 'Return 429 + Retry-After'],
+    hints: ['Token bucket/sliding window', 'Redis INCR + EXPIRE atomic', 'Local fallback khi Redis degrade'],
+    framework: ['Requirements: exactness vs performance, burst allowance', 'Estimation: expected RPS and cardinality of keys', 'High level: limiter service + Redis cluster + config service', 'Deep dive: atomic update, clock skew, fail-open/fail-close policy'],
+    sample: ['Use token bucket for smoother control', 'Store counters in Redis with Lua script for atomic check+decrement', 'Expose metrics: blocked requests, near-limit requests, limiter latency']
+  },
+  {
+    title: 'Thiết kế Chat Realtime',
+    level: 'advanced',
+    emoji: '💬',
+    scale: '50M DAU, 500K concurrent connections',
+    requirements: ['1-1 và group chat', 'Delivery/read receipt', 'Online presence', 'Message sync đa thiết bị'],
+    hints: ['WebSocket gateway layer', 'Message ordering per conversation', 'Offline sync via pull API'],
+    framework: ['Requirements: ordering guarantees, delivery semantics', 'Estimation: conn count, msg/sec, storage retention', 'High level: WS gateway + chat service + MQ + storage', 'Deep dive: presence scaling, fan-out groups, idempotent delivery'],
+    sample: ['Gateway giữ connection state phân tán bằng consistent hashing', 'Messages ghi append log, rồi fan-out đến recipients', 'Read receipt và presence publish qua pub/sub bus']
+  }
+];
+
+const CHEATSHEET = [
+  { cat: 'Scalability', item: 'Load Balancer', use: 'Phân phối request và health-check', tools: 'Nginx, HAProxy, ALB', complexity: 'Low' },
+  { cat: 'Scalability', item: 'Auto Scaling', use: 'Co giãn theo tải', tools: 'ASG, KEDA, HPA', complexity: 'Medium' },
+  { cat: 'Database', item: 'Read Replica', use: 'Scale đọc', tools: 'MySQL/Postgres Replica', complexity: 'Low' },
+  { cat: 'Database', item: 'Sharding', use: 'Scale dữ liệu ghi lớn', tools: 'Vitess, Citus, Mongo', complexity: 'High' },
+  { cat: 'Caching', item: 'Cache-Aside', use: 'Giảm latency cho read path', tools: 'Redis, Memcached', complexity: 'Low' },
+  { cat: 'Async', item: 'Message Queue', use: 'Xử lý bất đồng bộ và retry', tools: 'Kafka, RabbitMQ, SQS', complexity: 'Medium' },
+  { cat: 'Reliability', item: 'Circuit Breaker', use: 'Chống cascade failure', tools: 'Resilience4j', complexity: 'Medium' },
+  { cat: 'Observability', item: 'Tracing', use: 'Debug latency liên service', tools: 'OpenTelemetry, Jaeger', complexity: 'Medium' },
+  { cat: 'Storage', item: 'Object Storage', use: 'Ảnh/video/file lớn', tools: 'S3, GCS, Azure Blob', complexity: 'Low' },
+  { cat: 'Search', item: 'Inverted Index', use: 'Full-text search', tools: 'Elasticsearch, OpenSearch', complexity: 'Medium' }
+];
+
+const state = {
+  completedItems: new Set(),
+  interviewTrackDone: new Set(),
+  quiz: { correct: 0, wrong: 0, answered: new Set(), wrongTopics: {} },
+  drillScores: {},
+  deepScores: {},
+  topicChecklist: {},
+  review: { entries: {}, history: [], currentTopicId: null },
+  practice: {},
+  practiceNow: { labIndex: null, score: 0, attempts: [] },
+  bestQuizPct: 0,
+  mock: { durationSec: 45 * 60, remainingSec: 45 * 60, running: false, history: [] },
+  studyPlanWeeks: 12,
+  studyIntensity: 'balanced',
+  studyCurrentWeek: 1
+};
+
+let quizSession = [];
+let currentQuizCount = 20;
+let mockTimerRef = null;
+
+function saveState() {
+  const payload = {
+    completedItems: [...state.completedItems],
+    interviewTrackDone: [...state.interviewTrackDone],
+    quiz: {
+      correct: state.quiz.correct,
+      wrong: state.quiz.wrong,
+      answered: [...state.quiz.answered],
+      wrongTopics: state.quiz.wrongTopics
+    },
+    drillScores: state.drillScores,
+    deepScores: state.deepScores,
+    topicChecklist: state.topicChecklist,
+    review: state.review,
+    practice: state.practice,
+    practiceNow: state.practiceNow,
+    bestQuizPct: state.bestQuizPct,
+    mock: state.mock,
+    studyPlanWeeks: state.studyPlanWeeks,
+    studyIntensity: state.studyIntensity,
+    studyCurrentWeek: state.studyCurrentWeek
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    state.completedItems = new Set(parsed.completedItems || []);
+    state.interviewTrackDone = new Set(parsed.interviewTrackDone || []);
+    state.quiz.correct = parsed.quiz?.correct || 0;
+    state.quiz.wrong = parsed.quiz?.wrong || 0;
+    state.quiz.answered = new Set(parsed.quiz?.answered || []);
+    state.quiz.wrongTopics = parsed.quiz?.wrongTopics || {};
+    state.drillScores = parsed.drillScores || {};
+    state.deepScores = parsed.deepScores || {};
+    state.topicChecklist = parsed.topicChecklist || {};
+    state.review = parsed.review || state.review;
+    state.practice = parsed.practice || {};
+    state.practiceNow = parsed.practiceNow || state.practiceNow;
+    state.bestQuizPct = parsed.bestQuizPct || 0;
+    state.mock = parsed.mock || state.mock;
+    state.studyPlanWeeks = parsed.studyPlanWeeks || 12;
+    state.studyIntensity = parsed.studyIntensity || 'balanced';
+    state.studyCurrentWeek = parsed.studyCurrentWeek || 1;
+  } catch (e) {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach((p) => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const titles = {
+    home: 'Dashboard',
+    roadmap: 'Lộ trình học',
+    theory: 'Lý thuyết',
+    review: 'Ôn tập thông minh',
+    practice: 'Thực hành',
+    quiz: 'Quiz & Ôn luyện',
+    exercises: 'Bài tập lớn',
+    cheatsheet: 'Cheat Sheet',
+    progress: 'Tiến độ'
+  };
+  document.getElementById('pageTitle').textContent = titles[page] || page;
+  document.querySelectorAll('.nav-item').forEach((n) => {
+    if (n.getAttribute('onclick') && n.getAttribute('onclick').includes(`'${page}'`)) n.classList.add('active');
+  });
+
+  if (page === 'theory') renderTheoryList();
+  if (page === 'review') renderReview();
+  if (page === 'practice') renderPractice();
+  if (page === 'quiz') renderQuiz(currentQuizCount);
+  if (page === 'exercises') renderExercises();
+  if (page === 'roadmap') renderRoadmap();
+  if (page === 'cheatsheet') renderCheatsheet();
+  if (page === 'progress') renderProgress();
+}
+
+function openTopic(id) {
+  navigate('theory');
+  setTimeout(() => renderTopicDetail(id), 50);
+}
+
+function updateBadges() {
+  document.getElementById('theoryBadge').textContent = Object.keys(TOPICS).length;
+  document.getElementById('practiceBadge').textContent = PRACTICE_LABS.length;
+  document.getElementById('exerciseBadge').textContent = EXERCISES.length;
+  document.getElementById('statTheory').textContent = Object.keys(TOPICS).length;
+  document.getElementById('statLabs').textContent = PRACTICE_LABS.length;
+  document.getElementById('statQuiz').textContent = QUIZ_BANK.length;
+  document.getElementById('statExercises').textContent = EXERCISES.length;
+}
+
+function renderRoadmap() {
+  document.getElementById('roadmapTrack').innerHTML = ROADMAP.map((item, i) => `
+    <div class="roadmap-item ${state.completedItems.has(i) ? 'done' : ''}" onclick="toggleDone(${i})">
+      <div class="roadmap-dot"></div>
+      ${item.phase ? `<div class="roadmap-phase">${item.phase}</div>` : ''}
+      <div class="roadmap-name">${state.completedItems.has(i) ? '✅ ' : ''}${item.name}</div>
+      <div class="roadmap-topics">${item.topics}</div>
+      <div class="roadmap-topics" style="margin-top:6px;color:var(--text2)"><strong>Học từ:</strong> ${getRoadmapGuide(i).from}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px" onclick="event.stopPropagation()">
+        <button class="btn btn-ghost" onclick="roadmapOpenTheory(${i})">Mở Theory</button>
+        <button class="btn btn-ghost" onclick="roadmapOpenPractice(${i})">Làm Practice</button>
+        <button class="btn btn-ghost" onclick="roadmapOpenQuiz()">Làm Quiz</button>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+        <span class="card-tag tag-${item.difficulty}">${item.difficulty.toUpperCase()}</span>
+        <span style="font-size:11px;color:var(--text3);margin-left:auto">${state.completedItems.has(i) ? 'Hoàn thành ✓' : 'Click để đánh dấu'}</span>
+      </div>
+    </div>
+  `).join('');
+
+  const faDone = state.interviewTrackDone.size;
+  const faTotal = FIRST_AMERICAN_TRACK.length;
+  const faPct = Math.round((faDone / faTotal) * 100);
+  const stats = document.getElementById('faTrackStats');
+  if (stats) {
+    stats.innerHTML = `
+      <span class="pill">Tiến độ track: ${faDone}/${faTotal}</span>
+      <span class="pill">Hoàn thành: ${faPct}%</span>
+      <span class="pill">Mục tiêu: Senior Fullstack interview readiness</span>
+    `;
+  }
+
+  const faBox = document.getElementById('firstAmericanTrack');
+  if (faBox) {
+    faBox.innerHTML = FIRST_AMERICAN_TRACK.map((item, i) => `
+      <div class="roadmap-item ${state.interviewTrackDone.has(i) ? 'done' : ''}" onclick="toggleInterviewTrackDone(${i})">
+        <div class="roadmap-dot"></div>
+        <div class="roadmap-phase">WEEK ${item.week} • ${item.round.toUpperCase()}</div>
+        <div class="roadmap-name">${state.interviewTrackDone.has(i) ? '✅ ' : ''}${item.focus}</div>
+        <div class="roadmap-topics"><strong>Drill:</strong> ${item.drills}</div>
+        <div class="roadmap-topics" style="margin-top:6px"><strong>Output:</strong> ${item.output}</div>
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+          <span class="card-tag tag-${item.difficulty}">${item.difficulty.toUpperCase()}</span>
+          <span style="font-size:11px;color:var(--text3);margin-left:auto">${state.interviewTrackDone.has(i) ? 'Hoàn thành ✓' : 'Click để đánh dấu'}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+function toggleDone(i) {
+  if (state.completedItems.has(i)) state.completedItems.delete(i);
+  else state.completedItems.add(i);
+  updateProgress();
+  renderRoadmap();
+  if (document.getElementById('page-progress')?.classList.contains('active')) {
+    renderProgress();
+  }
+  saveState();
+}
+
+function clearAllRoadmapDone() {
+  if (!state.completedItems.size) return;
+  const ok = confirm('Bạn muốn bỏ toàn bộ dấu hoàn thành trong Roadmap?');
+  if (!ok) return;
+  state.completedItems.clear();
+  updateProgress();
+  renderRoadmap();
+  if (document.getElementById('page-progress')?.classList.contains('active')) {
+    renderProgress();
+  }
+  saveState();
+}
+
+function toggleInterviewTrackDone(i) {
+  if (state.interviewTrackDone.has(i)) state.interviewTrackDone.delete(i);
+  else state.interviewTrackDone.add(i);
+  renderRoadmap();
+  saveState();
+}
+
+function updateProgress() {
+  const pct = Math.round((state.completedItems.size / ROADMAP.length) * 100);
+  document.getElementById('pct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+function renderTheoryList() {
+  const covered = THEORY_COVERAGE.filter((x) => x.status === 'covered').length;
+  const total = THEORY_COVERAGE.length;
+  const pct = Math.round((covered / total) * 100);
+  document.getElementById('theoryContent').innerHTML = `
+    <div class="practice-scenario" style="margin-bottom:18px">
+      <div class="scenario-tag">// COVERAGE STATUS</div>
+      <div class="scenario-title">Mức độ bao phủ kiến thức roadmap</div>
+      <div class="scenario-desc">Đã cover ${covered}/${total} node (${pct}%). Các node trạng thái partial/next được đánh dấu để bạn biết phần nào cần học sâu thêm.</div>
+      <div style="overflow:auto">
+        <table class="cheat-table coverage-table">
+          <thead><tr><th>Roadmap Node</th><th>Trạng thái</th><th>Module học</th></tr></thead>
+          <tbody>
+            ${THEORY_COVERAGE.map((c) => `<tr><td><strong>${c.node}</strong></td><td class="coverage-${c.status}">${c.status.toUpperCase()}</td><td>${TOPICS[c.mapTo]?.title || c.mapTo}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="cards-grid">
+      ${Object.entries(TOPICS).map(([id, t]) => `
+        <div class="card" onclick="renderTopicDetail('${id}')">
+          <div class="card-icon">${t.icon}</div>
+          <div class="card-title">${t.title}</div>
+          <div class="card-desc">${t.sections.map((s) => s.h).join(' • ')}</div>
+          <div class="card-meta"><span class="card-tag tag-${t.difficulty}">${t.difficulty.toUpperCase()}</span><span class="card-progress-text">→ Học ngay</span></div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderTopicDetail(id) {
+  const t = TOPICS[id];
+  if (!t) return;
+  const refs = getTopicReferences(id);
+  const answerTemplate = getDrillTemplate(id);
+  const lastDrill = state.drillScores[id];
+  const lastDeep = state.deepScores[id];
+  const checklistProgress = getTopicChecklistCompletion(id);
+  const analysisHtml = renderTopicAnalysis(id);
+  document.getElementById('theoryContent').innerHTML = `
+    <div class="topic-header">
+      <div class="topic-icon-big">${t.icon}</div>
+      <div>
+        <div class="topic-title-big">${t.title}</div>
+        <div class="topic-desc-big">Bám sát roadmap.sh: khái niệm cốt lõi, pattern và checklist để trả lời interview.</div>
+        <div style="margin-top:8px"><span class="card-tag tag-${t.difficulty}">${t.difficulty.toUpperCase()}</span></div>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'tt-theory')">📖 Lý thuyết</div>
+      <div class="tab" onclick="switchTab(this,'tt-review')">🧠 Ôn nhanh</div>
+      <div class="tab" onclick="switchTab(this,'tt-drill')">🧪 Drill thực hành</div>
+      <div class="tab" onclick="switchTab(this,'tt-deep')">🧩 Deep Dive</div>
+    </div>
+    <div class="tab-panel active" id="tt-theory">
+      ${t.sections.map((s) => `<div class="theory-section"><div class="theory-h2"><span class="dot"></span>${s.h}</div>${s.content}</div>`).join('')}
+      ${analysisHtml}
+    </div>
+    <div class="tab-panel" id="tt-review">
+      <div class="practice-scenario">
+        <div class="scenario-tag">// QUICK REVIEW</div>
+        <div class="scenario-title">3 ý cần nhớ trước interview</div>
+        <div class="requirement-list">${t.quickReview.map((x) => `<div class="req-item"><span>•</span>${x}</div>`).join('')}</div>
+      </div>
+    </div>
+    <div class="tab-panel" id="tt-drill">
+      <div class="practice-scenario">
+        <div class="scenario-tag">// SELF CHECK</div>
+        <div class="scenario-title">Checklist hoàn thành chủ đề</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          <span class="pill" id="topicChecklistPct-${id}">${checklistProgress.done}/${checklistProgress.total} (${checklistProgress.pct}%)</span>
+          <span style="font-size:11px;color:var(--text3)">Tick từng mục để lưu tiến độ</span>
+        </div>
+        <div class="requirement-list">${t.checklist.map((x, idx) => `<label class="req-item" style="cursor:pointer"><input type="checkbox" ${isTopicChecklistChecked(id, idx) ? 'checked' : ''} onchange="toggleTopicChecklist('${id}',${idx},this.checked)"><span style="${isTopicChecklistChecked(id, idx) ? 'text-decoration:line-through;opacity:0.65;' : ''}">${x}</span></label>`).join('')}</div>
+        <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:8px">MẪU ĐÁP ÁN CHUẨN (REFERENCE ANSWER)</div>
+        <div class="requirement-list" style="margin-bottom:12px">${answerTemplate.map((x) => `<div class="req-item"><span>✓</span>${x}</div>`).join('')}</div>
+
+        <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:8px">BÀI LÀM TỰ LUẬN</div>
+        <textarea id="drillAnswer-${id}" placeholder="Viết câu trả lời của bạn theo framework: requirements -> estimation -> architecture -> trade-offs..."></textarea>
+        <div class="requirement-list" style="margin-top:10px;margin-bottom:12px">
+          <label class="req-item"><input type="checkbox" id="drill-${id}-r1"> Requirement rõ và có số liệu</label>
+          <label class="req-item"><input type="checkbox" id="drill-${id}-r2"> Estimation có công thức/giả định</label>
+          <label class="req-item"><input type="checkbox" id="drill-${id}-r3"> Kiến trúc có flow dữ liệu rõ</label>
+          <label class="req-item"><input type="checkbox" id="drill-${id}-r4"> Có trade-off cụ thể</label>
+          <label class="req-item"><input type="checkbox" id="drill-${id}-r5"> Có monitoring/risk/degrade plan</label>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="scoreDrill('${id}')">Chấm tự động</button>
+          <button class="btn btn-ghost" onclick="clearDrill('${id}')">Xóa bài làm</button>
+          <span class="pill" id="drillScore-${id}">${lastDrill ? `Điểm gần nhất: ${lastDrill.score}/${lastDrill.max}` : 'Chưa có điểm'}</span>
+        </div>
+      </div>
+    </div>
+    <div class="tab-panel" id="tt-deep">
+      <div class="practice-scenario">
+        <div class="scenario-tag">// INTERVIEW DEPTH</div>
+        <div class="scenario-title">Khung học sâu cho ${t.title}</div>
+        <div class="requirement-list">
+          <div class="req-item"><span>1</span> Kiến thức nền: định nghĩa, metric quan trọng, nguyên nhân phát sinh vấn đề.</div>
+          <div class="req-item"><span>2</span> Thiết kế: sơ đồ baseline + phương án scale + chiến lược fault tolerance.</div>
+          <div class="req-item"><span>3</span> Vận hành: monitoring, alerting, runbook và rollback plan.</div>
+          <div class="req-item"><span>4</span> Trade-off: chi phí, độ phức tạp, consistency, latency.</div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:8px">INTERVIEW QUESTIONS</div>
+        <div class="requirement-list" style="margin-bottom:0">
+          <div class="req-item"><span>?</span> Nếu traffic tăng 10x trong 1 giờ, kiến trúc của bạn scale thế nào?</div>
+          <div class="req-item"><span>?</span> Thành phần nào là bottleneck đầu tiên và cách giảm rủi ro?</div>
+          <div class="req-item"><span>?</span> Bạn chấp nhận eventual consistency ở phần nào và vì sao?</div>
+        </div>
+
+        <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;letter-spacing:1px;margin:14px 0 8px">BÀI LÀM DEEP DIVE</div>
+        <textarea id="deepAnswer-${id}" placeholder="Viết câu trả lời deep dive: assumptions, bottleneck, failure mode, trade-offs, rollout/monitoring..."></textarea>
+        <div class="requirement-list" style="margin-top:10px;margin-bottom:12px">
+          <label class="req-item"><input type="checkbox" id="deep-${id}-r1"> Xác định bottleneck và failure mode rõ</label>
+          <label class="req-item"><input type="checkbox" id="deep-${id}-r2"> Có phương án scale và capacity reasoning</label>
+          <label class="req-item"><input type="checkbox" id="deep-${id}-r3"> Có trade-off C/A/latency/cost rõ ràng</label>
+          <label class="req-item"><input type="checkbox" id="deep-${id}-r4"> Có observability + alert + runbook</label>
+          <label class="req-item"><input type="checkbox" id="deep-${id}-r5"> Có rollout strategy và fallback/degrade plan</label>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+          <button class="btn btn-primary" onclick="scoreDeepDive('${id}')">Chấm Deep Dive</button>
+          <button class="btn btn-ghost" onclick="clearDeepDive('${id}')">Xóa bài làm</button>
+          <span class="pill" id="deepScore-${id}">${lastDeep ? `Điểm deep gần nhất: ${lastDeep.score}/${lastDeep.max}` : 'Chưa có điểm deep'}</span>
+        </div>
+
+        <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;letter-spacing:1px;margin:14px 0 8px">NGUỒN CHUẨN ĐỂ ĐỐI CHIẾU</div>
+        <div class="requirement-list" style="margin-bottom:12px">${refs.map((r) => `<div class="req-item"><span>🔗</span><a href="${r.url}" target="_blank" rel="noopener noreferrer" style="color:var(--text)">${r.title}</a></div>`).join('')}</div>
+        <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:8px">RUBRIC TỰ CHẤM (0-2 điểm mỗi mục)</div>
+        <div class="requirement-list" style="margin-bottom:0">
+          <div class="req-item"><span>0-2</span> Requirement rõ ràng, có số liệu và ràng buộc thực tế.</div>
+          <div class="req-item"><span>0-2</span> Estimation hợp lý, có công thức và giả định minh bạch.</div>
+          <div class="req-item"><span>0-2</span> Kiến trúc có luồng dữ liệu rõ, xử lý failure hợp lý.</div>
+          <div class="req-item"><span>0-2</span> Trade-off cụ thể, không trả lời kiểu chung chung.</div>
+          <div class="req-item"><span>0-2</span> Vận hành: metrics/alerts/runbook được nêu rõ.</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function switchTab(el, panelId) {
+  el.closest('.tabs').querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+  el.classList.add('active');
+  el.closest('.page').querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+  document.getElementById(panelId).classList.add('active');
+}
+
+function renderQuiz(count = 20) {
+  currentQuizCount = count;
+  quizSession = shuffle(QUIZ_BANK).slice(0, Math.min(count, QUIZ_BANK.length));
+  state.quiz.correct = 0;
+  state.quiz.wrong = 0;
+  state.quiz.answered.clear();
+  updateScore();
+  document.getElementById('quizMeta').innerHTML = `
+    <span class="pill">📚 Ngân hàng: ${QUIZ_BANK.length} câu</span>
+    <span class="pill">🧪 Phiên hiện tại: ${quizSession.length} câu</span>
+    <span class="pill">Mode: Normal</span>
+    <span class="pill">🎯 Mục tiêu: >= 80%</span>
+  `;
+  document.getElementById('quizContent').innerHTML = quizSession.map((q, i) => `
+    <div class="quiz-card">
+      <div class="quiz-question">Q${i + 1}. ${q.q}</div>
+      <div class="quiz-options">
+        ${q.options.map((o, j) => `<div class="quiz-option" onclick="answer(this,${j},${q.correct},${i},'${q.topic}')"><div class="option-letter">${'ABCD'[j]}</div>${o}</div>`).join('')}
+      </div>
+      <div class="quiz-explain" id="qe-${i}">${q.explain}</div>
+    </div>
+  `).join('');
+}
+
+function getQuestionDifficulty(q) {
+  const beginnerTopics = new Set(['networking', 'scalability', 'database']);
+  const advancedTopics = new Set(['consistency', 'microservices', 'reliability', 'estimation']);
+  if (beginnerTopics.has(q.topic)) return 'beginner';
+  if (advancedTopics.has(q.topic)) return 'advanced';
+  return 'intermediate';
+}
+
+function getAdaptiveMix(total) {
+  if (state.bestQuizPct < 50) return { beginner: Math.ceil(total * 0.6), intermediate: Math.ceil(total * 0.3), advanced: total - Math.ceil(total * 0.6) - Math.ceil(total * 0.3), level: 'beginner' };
+  if (state.bestQuizPct < 75) return { beginner: Math.ceil(total * 0.3), intermediate: Math.ceil(total * 0.5), advanced: total - Math.ceil(total * 0.3) - Math.ceil(total * 0.5), level: 'intermediate' };
+  return { beginner: Math.ceil(total * 0.15), intermediate: Math.ceil(total * 0.35), advanced: total - Math.ceil(total * 0.15) - Math.ceil(total * 0.35), level: 'advanced' };
+}
+
+function getAdaptiveMixByLevel(total, level) {
+  if (level === 'beginner') return { beginner: Math.ceil(total * 0.6), intermediate: Math.ceil(total * 0.3), advanced: total - Math.ceil(total * 0.6) - Math.ceil(total * 0.3), level: 'beginner' };
+  if (level === 'intermediate') return { beginner: Math.ceil(total * 0.3), intermediate: Math.ceil(total * 0.5), advanced: total - Math.ceil(total * 0.3) - Math.ceil(total * 0.5), level: 'intermediate' };
+  return { beginner: Math.ceil(total * 0.15), intermediate: Math.ceil(total * 0.35), advanced: total - Math.ceil(total * 0.15) - Math.ceil(total * 0.35), level: 'advanced' };
+}
+
+function getTopicWeakWeight(topicId) {
+  const quizWrong = state.quiz.wrongTopics?.[topicId] || 0;
+  const drill = state.drillScores?.[topicId];
+  const deep = state.deepScores?.[topicId];
+  const drillPenalty = drill ? Math.max(0, Math.ceil((drill.max - drill.score) / 4)) : 2;
+  const deepPenalty = deep ? Math.max(0, Math.ceil((deep.max - deep.score) / 5)) : 2;
+  return quizWrong + drillPenalty + deepPenalty;
+}
+
+function pickAdaptiveQuestions(count = 20, forcedLevel) {
+  const weighted = QUIZ_BANK.map((q) => {
+    const w = getTopicWeakWeight(q.topic);
+    const difficulty = getQuestionDifficulty(q);
+    return { ...q, _w: 1 + w * 3, _difficulty: difficulty };
+  });
+
+  const mix = forcedLevel
+    ? getAdaptiveMixByLevel(Math.min(count, weighted.length), forcedLevel)
+    : getAdaptiveMix(Math.min(count, weighted.length));
+  const quotas = [
+    ['beginner', mix.beginner],
+    ['intermediate', mix.intermediate],
+    ['advanced', mix.advanced]
+  ];
+
+  const chosen = [];
+  for (const [difficulty, quota] of quotas) {
+    const pool = weighted.filter((q) => q._difficulty === difficulty && !chosen.includes(q));
+    for (let n = 0; n < quota && pool.length; n++) {
+      const totalWeight = pool.reduce((s, x) => s + x._w, 0);
+      let r = Math.random() * totalWeight;
+      let idx = 0;
+      for (let i = 0; i < pool.length; i++) {
+        r -= pool[i]._w;
+        if (r <= 0) {
+          idx = i;
+          break;
+        }
+      }
+      chosen.push(pool[idx]);
+      pool.splice(idx, 1);
+    }
+  }
+
+  if (chosen.length < Math.min(count, weighted.length)) {
+    const remaining = weighted.filter((q) => !chosen.includes(q));
+    chosen.push(...shuffle(remaining).slice(0, Math.min(count, weighted.length) - chosen.length));
+  }
+
+  const order = { beginner: 1, intermediate: 2, advanced: 3 };
+  return chosen
+    .sort((a, b) => order[a._difficulty] - order[b._difficulty])
+    .map(({ _w, _difficulty, ...rest }) => rest);
+}
+
+function renderAdaptiveQuiz(count = 20) {
+  currentQuizCount = count;
+  const currentPlan = buildStudyPlan(state.studyPlanWeeks || 12)[Math.max(0, (state.studyCurrentWeek || 1) - 1)];
+  const forcedLevel = currentPlan?.difficulty;
+  quizSession = pickAdaptiveQuestions(count, forcedLevel);
+  state.quiz.correct = 0;
+  state.quiz.wrong = 0;
+  state.quiz.answered.clear();
+  updateScore();
+  const mix = forcedLevel ? getAdaptiveMixByLevel(quizSession.length, forcedLevel) : getAdaptiveMix(quizSession.length);
+  document.getElementById('quizMeta').innerHTML = `
+    <span class="pill">📚 Ngân hàng: ${QUIZ_BANK.length} câu</span>
+    <span class="pill">🧪 Phiên hiện tại: ${quizSession.length} câu</span>
+    <span class="pill">Mode: Adaptive</span>
+    <span class="pill">Level: ${mix.level.toUpperCase()}</span>
+    <span class="pill">Study Week: W${state.studyCurrentWeek}</span>
+    <span class="pill">Mix B/I/A: ${mix.beginner}/${mix.intermediate}/${mix.advanced}</span>
+    <span class="pill">🔥 Ưu tiên chủ đề yếu (quiz + drill)</span>
+  `;
+  document.getElementById('quizContent').innerHTML = quizSession.map((q, i) => `
+    <div class="quiz-card">
+      <div class="quiz-question">Q${i + 1}. ${q.q}</div>
+      <div class="quiz-options">
+        ${q.options.map((o, j) => `<div class="quiz-option" onclick="answer(this,${j},${q.correct},${i},'${q.topic}')"><div class="option-letter">${'ABCD'[j]}</div>${o}</div>`).join('')}
+      </div>
+      <div class="quiz-explain" id="qe-${i}">${q.explain}</div>
+    </div>
+  `).join('');
+}
+
+function answer(el, chosen, correct, qi, topic) {
+  if (state.quiz.answered.has(qi)) return;
+  state.quiz.answered.add(qi);
+  const options = el.closest('.quiz-options').querySelectorAll('.quiz-option');
+  options.forEach((o) => o.classList.add('disabled'));
+  options[correct].classList.add('correct');
+
+  if (chosen !== correct) {
+    el.classList.add('wrong');
+    state.quiz.wrong++;
+    state.quiz.wrongTopics[topic] = (state.quiz.wrongTopics[topic] || 0) + 1;
+  } else {
+    state.quiz.correct++;
+  }
+
+  document.getElementById('qe-' + qi).classList.add('show');
+  updateScore();
+  saveState();
+}
+
+function extractKeywords(topicId) {
+  const raw = getDrillTemplate(topicId).join(' ').toLowerCase();
+  const stop = new Set(['cua', 'cho', 'theo', 'va', 'co', 'la', 'mot', 'nhung', 'khi', 'hay', 'voi', 'tren', 'duoc', 'the']);
+  const tokens = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((x) => x.length >= 5 && !stop.has(x));
+  return [...new Set(tokens)].slice(0, 18);
+}
+
+function scoreDrill(topicId) {
+  const answerEl = document.getElementById(`drillAnswer-${topicId}`);
+  if (!answerEl) return;
+  const answer = answerEl.value.trim().toLowerCase();
+  const rubricChecks = [1, 2, 3, 4, 5].map((n) => document.getElementById(`drill-${topicId}-r${n}`)?.checked ? 1 : 0);
+  const rubricScore = rubricChecks.reduce((s, x) => s + x, 0) * 2;
+
+  const keywords = extractKeywords(topicId);
+  const hit = keywords.filter((k) => answer.includes(k)).length;
+  const keywordScore = Math.min(10, Math.round((hit / Math.max(1, keywords.length)) * 10));
+
+  const lengthBonus = answer.length > 400 ? 1 : 0;
+  const score = Math.min(20, rubricScore + keywordScore + lengthBonus);
+  const payload = {
+    score,
+    max: 20,
+    rubricScore,
+    keywordScore,
+    keywordHit: hit,
+    at: new Date().toLocaleString('vi-VN')
+  };
+  state.drillScores[topicId] = payload;
+
+  const badge = document.getElementById(`drillScore-${topicId}`);
+  if (badge) {
+    badge.textContent = `Điểm gần nhất: ${score}/20 (rubric ${rubricScore}, keyword ${keywordScore})`;
+  }
+
+  if (score < 12) {
+    state.quiz.wrongTopics[topicId] = (state.quiz.wrongTopics[topicId] || 0) + 1;
+  }
+
+  saveState();
+  renderProgress();
+}
+
+function clearDrill(topicId) {
+  const answerEl = document.getElementById(`drillAnswer-${topicId}`);
+  if (answerEl) answerEl.value = '';
+  [1, 2, 3, 4, 5].forEach((n) => {
+    const c = document.getElementById(`drill-${topicId}-r${n}`);
+    if (c) c.checked = false;
+  });
+}
+
+function extractDeepKeywords(topicId) {
+  const a = TOPIC_ANALYSIS[topicId];
+  const raw = [
+    ...(a?.tradeoffs || []),
+    ...(a?.cases || []),
+    ...(a?.problem || []),
+    ...(a?.disadvantages || [])
+  ].join(' ').toLowerCase();
+
+  const tokens = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((x) => x.length >= 6);
+  return [...new Set(tokens)].slice(0, 24);
+}
+
+function scoreDeepDive(topicId) {
+  const answerEl = document.getElementById(`deepAnswer-${topicId}`);
+  if (!answerEl) return;
+  const answer = answerEl.value.trim().toLowerCase();
+
+  const rubricChecks = [1, 2, 3, 4, 5].map((n) =>
+    document.getElementById(`deep-${topicId}-r${n}`)?.checked ? 1 : 0
+  );
+  const rubricScore = rubricChecks.reduce((s, x) => s + x, 0) * 3;
+
+  const keywords = extractDeepKeywords(topicId);
+  const hit = keywords.filter((k) => answer.includes(k)).length;
+  const keywordScore = Math.min(10, Math.round((hit / Math.max(1, keywords.length)) * 10));
+
+  const depthBonus = answer.length > 700 ? 5 : answer.length > 450 ? 3 : answer.length > 250 ? 1 : 0;
+  const score = Math.min(30, rubricScore + keywordScore + depthBonus);
+
+  const payload = {
+    score,
+    max: 30,
+    rubricScore,
+    keywordScore,
+    keywordHit: hit,
+    at: new Date().toLocaleString('vi-VN')
+  };
+  state.deepScores[topicId] = payload;
+
+  const badge = document.getElementById(`deepScore-${topicId}`);
+  if (badge) {
+    badge.textContent = `Điểm deep gần nhất: ${score}/30 (rubric ${rubricScore}, keyword ${keywordScore})`;
+  }
+
+  if (score < 18) {
+    state.quiz.wrongTopics[topicId] = (state.quiz.wrongTopics[topicId] || 0) + 1;
+  }
+
+  saveState();
+  renderProgress();
+}
+
+function clearDeepDive(topicId) {
+  const answerEl = document.getElementById(`deepAnswer-${topicId}`);
+  if (answerEl) answerEl.value = '';
+  [1, 2, 3, 4, 5].forEach((n) => {
+    const c = document.getElementById(`deep-${topicId}-r${n}`);
+    if (c) c.checked = false;
+  });
+}
+
+function updateScore() {
+  const total = state.quiz.answered.size;
+  const pct = total > 0 ? Math.round((state.quiz.correct / total) * 100) : 0;
+  if (pct > state.bestQuizPct) state.bestQuizPct = pct;
+
+  document.getElementById('scoreCorrect').textContent = state.quiz.correct;
+  document.getElementById('scoreWrong').textContent = state.quiz.wrong;
+  document.getElementById('scoreTotal').textContent = total;
+  document.getElementById('scorePct').textContent = total > 0 ? pct + '%' : '—';
+}
+
+function formatTimer(sec) {
+  const m = String(Math.floor(sec / 60)).padStart(2, '0');
+  const s = String(sec % 60).padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function updateMockTimerUI() {
+  const el = document.getElementById('mockTimer');
+  if (el) el.textContent = formatTimer(state.mock.remainingSec);
+}
+
+function startMockTimer() {
+  if (state.mock.running) return;
+  state.mock.running = true;
+  mockTimerRef = setInterval(() => {
+    state.mock.remainingSec = Math.max(0, state.mock.remainingSec - 1);
+    updateMockTimerUI();
+    if (state.mock.remainingSec === 0) {
+      pauseMockTimer();
+      alert('Hết giờ mock interview. Hãy tự chấm theo rubric ngay.');
+    }
+  }, 1000);
+  saveState();
+}
+
+function pauseMockTimer() {
+  state.mock.running = false;
+  if (mockTimerRef) clearInterval(mockTimerRef);
+  mockTimerRef = null;
+  saveState();
+}
+
+function resetMockTimer() {
+  pauseMockTimer();
+  state.mock.remainingSec = state.mock.durationSec;
+  updateMockTimerUI();
+  saveState();
+}
+
+function getRubricScore() {
+  const keys = ['req', 'estimate', 'arch', 'api', 'db', 'scale', 'tradeoff', 'communication'];
+  return keys.reduce((sum, k) => sum + Number(document.getElementById(`rubric-${k}`)?.value || 1), 0);
+}
+
+function saveMockAttempt() {
+  const score = getRubricScore();
+  const max = 40;
+  const pct = Math.round((score / max) * 100);
+  state.mock.history.unshift({
+    at: new Date().toLocaleString('vi-VN'),
+    score,
+    max,
+    pct,
+    spentMin: Math.round((state.mock.durationSec - state.mock.remainingSec) / 60)
+  });
+  state.mock.history = state.mock.history.slice(0, 10);
+  saveState();
+  renderExercises();
+  renderProgress();
+}
+
+function downloadTextFile(filename, content, type = 'text/plain') {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function buildReport() {
+  const roadmapPct = Math.round((state.completedItems.size / ROADMAP.length) * 100);
+  const quizTotal = state.quiz.correct + state.quiz.wrong;
+  const quizPct = quizTotal ? Math.round((state.quiz.correct / quizTotal) * 100) : 0;
+  const weakTopics = Object.entries(state.quiz.wrongTopics).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const labRows = PRACTICE_LABS.map((lab, i) => {
+    const c = getLabCompletion(i);
+    return `- ${lab.title}: ${c.done}/${c.tasks} (${c.pct}%)`;
+  }).join('\n');
+  const mockRows = (state.mock.history || []).slice(0, 5).map((h) => `- ${h.at}: ${h.score}/${h.max} (${h.pct}%), ${h.spentMin} phút`).join('\n') || '- Chưa có dữ liệu';
+
+  return `# System Design Learning Report\n\n- Roadmap progress: ${state.completedItems.size}/${ROADMAP.length} (${roadmapPct}%)\n- Quiz latest: ${quizPct}%\n- Quiz best: ${state.bestQuizPct}%\n\n## Practice Labs\n${labRows}\n\n## Weak Topics\n${weakTopics.length ? weakTopics.map(([k, v]) => `- ${TOPICS[k]?.title || k}: ${v} lỗi`).join('\n') : '- Chưa có dữ liệu'}\n\n## Mock Interview History\n${mockRows}\n`;
+}
+
+function exportReportMarkdown() {
+  downloadTextFile('system-design-report.md', buildReport(), 'text/markdown');
+}
+
+function exportReportJson() {
+  const data = {
+    generatedAt: new Date().toISOString(),
+    roadmapDone: [...state.completedItems],
+    quiz: state.quiz,
+    bestQuizPct: state.bestQuizPct,
+    practice: state.practice,
+    mock: state.mock
+  };
+  downloadTextFile('system-design-report.json', JSON.stringify(data, null, 2), 'application/json');
+}
+
+function buildStudyPlan(weeks = 12) {
+  const profiles = {
+    light: { quizzes: '15-20 câu/tuần', labs: '1 lab mỗi 2 tuần', output: '1 sơ đồ + notes ngắn', deepDive: '1 phiên 60 phút/tuần' },
+    balanced: { quizzes: '30-40 câu/tuần', labs: '1 lab/tuần', output: '1 design doc vừa + trade-off', deepDive: '2 phiên 60-90 phút/tuần' },
+    intensive: { quizzes: '60-80 câu/tuần', labs: '1-2 lab/tuần + 1 mock', output: '1 design doc đầy đủ + review', deepDive: '3 phiên 90 phút/tuần' }
+  };
+  const p = profiles[state.studyIntensity] || profiles.balanced;
+
+  const undoneRoadmap = ROADMAP.filter((_, i) => !state.completedItems.has(i));
+  const weakTopics = Object.entries(state.quiz.wrongTopics || {})
+    .sort((a, b) => b[1] - a[1])
+    .map(([k]) => TOPICS[k]?.title)
+    .filter(Boolean);
+
+  const labsByNeed = PRACTICE_LABS.map((lab, i) => ({ ...lab, completion: getLabCompletion(i).pct }))
+    .sort((a, b) => a.completion - b.completion);
+
+  const faPriority = FIRST_AMERICAN_TRACK.filter((_, idx) => !state.interviewTrackDone.has(idx));
+
+  const plan = [];
+  const lowHalf = Math.max(1, Math.floor(weeks * 0.4));
+  const midHalf = Math.max(lowHalf + 1, Math.floor(weeks * 0.75));
+
+  for (let w = 1; w <= weeks; w++) {
+    const focusRoadmap = undoneRoadmap[(w - 1) % Math.max(1, undoneRoadmap.length)]?.name || 'Review & consolidation';
+    const focusWeak = weakTopics[(w - 1) % Math.max(1, weakTopics.length)] || 'Mixed topics quiz';
+    const focusLab = labsByNeed[(w - 1) % Math.max(1, labsByNeed.length)]?.title || 'Mock interview practice';
+    const faWeek = faPriority[(w - 1) % Math.max(1, faPriority.length)] || FIRST_AMERICAN_TRACK[(w - 1) % FIRST_AMERICAN_TRACK.length];
+    const difficulty = w <= lowHalf ? 'beginner' : (w <= midHalf ? 'intermediate' : 'advanced');
+    plan.push({
+      week: w,
+      theory: `${faWeek.round}: ${faWeek.focus}`,
+      quiz: `Adaptive quiz (${p.quizzes}) - trọng tâm: ${focusWeak}; coding drill: ${faWeek.drills}`,
+      practice: `${focusLab}; interview output: ${faWeek.output}`,
+      output: `${p.output}; deep dive: ${p.deepDive}; roadmap core: ${focusRoadmap}`,
+      where: faWeek.whereToDo || 'Theory + Practice + Quiz + Exercises trong tool này.',
+      doneWhen: faWeek.doneWhen || 'Có output tuần + tự chấm đạt >= 70%.',
+      difficulty
+    });
+  }
+  return plan;
+}
+
+function renderWeekActionButtons() {
+  return `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn btn-ghost" onclick="navigate('theory')">Theory</button>
+      <button class="btn btn-ghost" onclick="navigate('practice')">Practice</button>
+      <button class="btn btn-ghost" onclick="navigate('quiz');renderAdaptiveQuiz(currentQuizCount)">Quiz tuần</button>
+      <button class="btn btn-ghost" onclick="navigate('exercises')">Mock/Exercises</button>
+    </div>
+  `;
+}
+
+function renderStudyPlan(weeks = state.studyPlanWeeks) {
+  state.studyPlanWeeks = weeks;
+  const plan = buildStudyPlan(weeks);
+  const html = `
+    <div style="overflow:auto">
+      <table class="cheat-table">
+        <thead><tr><th>Week</th><th>Theory Focus</th><th>Quiz</th><th>Practice</th><th>Làm ở đâu?</th><th>Xong khi nào?</th><th>Output</th></tr></thead>
+        <tbody>
+          ${plan.map((r) => `<tr><td><span class="mono">W${r.week}</span></td><td>${r.theory}</td><td>${r.quiz}<br><span class="mono">level: ${r.difficulty}</span>${renderWeekActionButtons()}</td><td>${r.practice}</td><td>${r.where}</td><td>${r.doneWhen}</td><td>${r.output}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  const box = document.getElementById('studyPlanBox');
+  if (box) box.innerHTML = html;
+  saveState();
+}
+
+function setStudyIntensity(intensity) {
+  state.studyIntensity = intensity;
+  renderStudyPlan(state.studyPlanWeeks || 12);
+}
+
+function buildStudyPlanMarkdown() {
+  const plan = buildStudyPlan(state.studyPlanWeeks || 12);
+  return `# Study Plan (${state.studyPlanWeeks} weeks, intensity: ${state.studyIntensity})\n\n` +
+    plan.map((r) => `## Week ${r.week}\n- Theory: ${r.theory}\n- Quiz: ${r.quiz}\n- Difficulty: ${r.difficulty}\n- Practice: ${r.practice}\n- Where to do: ${r.where}\n- Done when: ${r.doneWhen}\n- Output: ${r.output}`).join('\n\n') + '\n';
+}
+
+function exportStudyPlanMarkdown() {
+  downloadTextFile('system-design-study-plan.md', buildStudyPlanMarkdown(), 'text/markdown');
+}
+
+function buildStudyPlanCsv() {
+  const plan = buildStudyPlan(state.studyPlanWeeks || 12);
+  const headers = ['week', 'difficulty', 'theory_focus', 'quiz', 'practice', 'where_to_do', 'done_when', 'output'];
+  const esc = (v) => `"${String(v).replaceAll('"', '""')}"`;
+  const rows = plan.map((r) => [r.week, r.difficulty, r.theory, r.quiz, r.practice, r.where, r.doneWhen, r.output].map(esc).join(','));
+  return `${headers.join(',')}\n${rows.join('\n')}\n`;
+}
+
+function exportStudyPlanCsv() {
+  downloadTextFile('system-design-study-plan.csv', buildStudyPlanCsv(), 'text/csv');
+}
+
+function setStudyWeek(week) {
+  const maxWeek = state.studyPlanWeeks || 12;
+  state.studyCurrentWeek = Math.min(Math.max(1, week), maxWeek);
+  saveState();
+  renderProgress();
+}
+
+function getLabTaskChecked(labIndex, taskIndex) {
+  return Boolean(state.practice[labIndex] && state.practice[labIndex][taskIndex]);
+}
+
+function isTopicChecklistChecked(topicId, itemIndex) {
+  return Boolean(state.topicChecklist[topicId] && state.topicChecklist[topicId][itemIndex]);
+}
+
+function getTopicChecklistCompletion(topicId) {
+  const total = TOPICS[topicId]?.checklist?.length || 0;
+  const done = Object.values(state.topicChecklist[topicId] || {}).filter(Boolean).length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  return { done, total, pct };
+}
+
+function toggleTopicChecklist(topicId, itemIndex, checked) {
+  if (!state.topicChecklist[topicId]) state.topicChecklist[topicId] = {};
+  state.topicChecklist[topicId][itemIndex] = checked;
+  saveState();
+  renderTopicDetail(topicId);
+}
+
+function ensureReviewEntries() {
+  const ids = Object.keys(TOPICS);
+  if (!state.review || typeof state.review !== 'object') {
+    state.review = { entries: {}, history: [], currentTopicId: null };
+  }
+  if (!state.review.entries || typeof state.review.entries !== 'object') {
+    state.review.entries = {};
+  }
+  if (!Array.isArray(state.review.history)) {
+    state.review.history = [];
+  }
+  ids.forEach((id) => {
+    if (!state.review.entries[id]) {
+      state.review.entries[id] = {
+        intervalDays: 1,
+        nextAt: 0,
+        seen: 0,
+        lastResult: 'new',
+        promptSeed: Date.now()
+      };
+    }
+  });
+}
+
+function getWeakTopicIds() {
+  return Object.entries(state.quiz.wrongTopics || {})
+    .sort((a, b) => b[1] - a[1])
+    .map(([topicId]) => topicId)
+    .filter((topicId) => TOPICS[topicId]);
+}
+
+function getDueReviewTopicIds() {
+  ensureReviewEntries();
+  const now = Date.now();
+  return Object.entries(state.review.entries)
+    .filter(([topicId, entry]) => TOPICS[topicId] && (entry.nextAt || 0) <= now)
+    .sort((a, b) => (a[1].nextAt || 0) - (b[1].nextAt || 0))
+    .map(([topicId]) => topicId);
+}
+
+function buildReviewQueue() {
+  ensureReviewEntries();
+  const ordered = [];
+  const seen = new Set();
+  const add = (id) => {
+    if (!id || seen.has(id) || !TOPICS[id]) return;
+    seen.add(id);
+    ordered.push(id);
+  };
+  getDueReviewTopicIds().forEach(add);
+  getWeakTopicIds().forEach(add);
+  Object.keys(TOPICS).forEach(add);
+  return ordered;
+}
+
+function getReviewPrompt(topicId) {
+  const t = TOPICS[topicId];
+  const e = state.review.entries[topicId] || {};
+  const quick = t.quickReview || [];
+  const checklist = t.checklist || [];
+  const prompts = [
+    `Giải thích nhanh ${t.title} trong 60 giây: định nghĩa, khi nào dùng, rủi ro chính.`,
+    `So sánh ${t.title} với một lựa chọn thay thế và nêu 2 trade-off cụ thể.`,
+    `Đưa một ví dụ production cho ${t.title}, nêu metric cần theo dõi và dấu hiệu lỗi.`,
+    `Từ checklist, hãy tự trả lời: ${checklist[Math.floor((e.promptSeed || 0) / 2) % Math.max(1, checklist.length)] || 'Mô tả 3 điểm cốt lõi của chủ đề.'}`,
+    `Ôn nhanh: ${quick[Math.floor((e.promptSeed || 0) / 3) % Math.max(1, quick.length)] || 'Nêu 3 ý chính cần nhớ trước interview.'}`
+  ];
+  return prompts[(e.promptSeed || Date.now()) % prompts.length];
+}
+
+function getLinkedTopics(topicId) {
+  const ids = Object.keys(TOPICS);
+  const idx = ids.indexOf(topicId);
+  const linked = [];
+  if (idx > 0) linked.push(ids[idx - 1]);
+  if (idx >= 0 && idx < ids.length - 1) linked.push(ids[idx + 1]);
+  getWeakTopicIds().forEach((id) => {
+    if (id !== topicId && !linked.includes(id) && linked.length < 3) linked.push(id);
+  });
+  return linked.slice(0, 3);
+}
+
+function reviewMark(topicId, remembered) {
+  ensureReviewEntries();
+  const entry = state.review.entries[topicId];
+  if (!entry) return;
+  const now = Date.now();
+
+  if (remembered) {
+    entry.intervalDays = Math.min(30, Math.max(1, Math.round((entry.intervalDays || 1) * 2)));
+    entry.nextAt = now + entry.intervalDays * 24 * 60 * 60 * 1000;
+    entry.lastResult = 'remembered';
+  } else {
+    entry.intervalDays = 1;
+    entry.nextAt = now + 12 * 60 * 60 * 1000;
+    entry.lastResult = 'forgotten';
+  }
+
+  entry.seen = (entry.seen || 0) + 1;
+  entry.promptSeed = now;
+  state.review.history.unshift({
+    at: new Date().toLocaleString('vi-VN'),
+    topicId,
+    result: entry.lastResult,
+    nextAt: entry.nextAt
+  });
+  state.review.history = state.review.history.slice(0, 40);
+
+  const queue = buildReviewQueue().filter((id) => id !== topicId);
+  state.review.currentTopicId = queue[0] || topicId;
+  saveState();
+  renderReview();
+}
+
+function reviewRefreshPrompt(topicId) {
+  ensureReviewEntries();
+  if (state.review.entries[topicId]) {
+    state.review.entries[topicId].promptSeed = Date.now();
+    saveState();
+    renderReview(topicId);
+  }
+}
+
+function reviewNextTopic() {
+  const queue = buildReviewQueue();
+  if (!queue.length) return;
+  const cur = state.review.currentTopicId;
+  const idx = queue.indexOf(cur);
+  const next = idx >= 0 ? queue[(idx + 1) % queue.length] : queue[0];
+  state.review.currentTopicId = next;
+  saveState();
+  renderReview();
+}
+
+function renderReview(forcedTopicId) {
+  ensureReviewEntries();
+  const queue = buildReviewQueue();
+  const due = getDueReviewTopicIds();
+  const topicId = forcedTopicId || state.review.currentTopicId || queue[0];
+  const box = document.getElementById('reviewContent');
+  if (!box) return;
+  if (!topicId || !TOPICS[topicId]) {
+    box.innerHTML = `<div class="practice-scenario"><div class="scenario-title">Chưa có dữ liệu ôn tập</div><div class="scenario-desc">Hãy học ít nhất một topic để bắt đầu.</div></div>`;
+    return;
+  }
+
+  state.review.currentTopicId = topicId;
+  const t = TOPICS[topicId];
+  const e = state.review.entries[topicId];
+  const linked = getLinkedTopics(topicId);
+  const prompt = getReviewPrompt(topicId);
+  const nextAtText = e.nextAt ? new Date(e.nextAt).toLocaleString('vi-VN') : 'Ngay bây giờ';
+  const historyRows = (state.review.history || [])
+    .slice(0, 5)
+    .map((h) => `<div class="req-item"><span>${h.result === 'remembered' ? '✅' : '🌀'}</span>${TOPICS[h.topicId]?.title || h.topicId} • ${h.at}</div>`)
+    .join('');
+
+  box.innerHTML = `
+    <div class="practice-scenario" style="border-color:rgba(124,111,255,0.35)">
+      <div class="scenario-tag">// SMART REVIEW LOOP</div>
+      <div class="scenario-title">${t.icon} ${t.title}</div>
+      <div class="scenario-desc">Ôn tập theo chu kỳ để làm mới kiến thức. Due now: <strong>${due.length}</strong> • Queue: <strong>${queue.length}</strong> • Interval hiện tại: <strong>${e.intervalDays} ngày</strong></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <span class="pill">Lần ôn: ${e.seen || 0}</span>
+        <span class="pill">Kết quả gần nhất: ${e.lastResult === 'remembered' ? 'Nhớ rồi' : e.lastResult === 'forgotten' ? 'Cần ôn lại' : 'Mới'}</span>
+        <span class="pill">Lịch ôn tiếp: ${nextAtText}</span>
+      </div>
+      <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:8px">PROMPT LÀM MỚI KIẾN THỨC</div>
+      <div class="requirement-list" style="margin-bottom:12px">
+        <div class="req-item"><span>🧠</span>${prompt}</div>
+      </div>
+
+      <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:8px">XÂU CHUỖI KIẾN THỨC</div>
+      <div class="requirement-list" style="margin-bottom:12px">
+        ${linked.length ? linked.map((id) => `<div class="req-item"><span>🔗</span>${TOPICS[id].title} — liên hệ: ${TOPICS[id].quickReview?.[0] || 'So sánh trade-off với topic hiện tại.'}</div>`).join('') : '<div class="req-item"><span>🔗</span>Chưa có topic liên kết, tiếp tục làm quiz để hệ thống gợi ý sâu hơn.</div>'}
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary" onclick="reviewMark('${topicId}', true)">✅ Mình nhớ rồi</button>
+        <button class="btn btn-ghost" onclick="reviewMark('${topicId}', false)">🌀 Cần ôn lại</button>
+        <button class="btn btn-ghost" onclick="reviewRefreshPrompt('${topicId}')">🔄 Làm mới câu ôn</button>
+        <button class="btn btn-ghost" onclick="reviewNextTopic()">⏭ Topic tiếp theo</button>
+      </div>
+    </div>
+
+    <div class="practice-scenario">
+      <div class="scenario-tag">// REVIEW HISTORY</div>
+      <div class="scenario-title">Lịch sử ôn gần nhất</div>
+      <div class="requirement-list">${historyRows || '<div class="req-item"><span>•</span>Chưa có lịch sử ôn.</div>'}</div>
+    </div>
+  `;
+
+  saveState();
+}
+
+function toggleLabTask(labIndex, taskIndex, checked) {
+  if (!state.practice[labIndex]) state.practice[labIndex] = {};
+  state.practice[labIndex][taskIndex] = checked;
+  saveState();
+  renderPractice();
+  updateProgress();
+}
+
+function getLabCompletion(labIndex) {
+  const tasks = PRACTICE_LABS[labIndex].tasks.length;
+  const done = Object.values(state.practice[labIndex] || {}).filter(Boolean).length;
+  return { done, tasks, pct: Math.round((done / tasks) * 100) };
+}
+
+function choosePracticeNowLabIndex() {
+  const list = PRACTICE_LABS.map((_, i) => ({ i, pct: getLabCompletion(i).pct }));
+  list.sort((a, b) => a.pct - b.pct);
+  return list[0]?.i ?? 0;
+}
+
+function startPracticeNow(labIndex) {
+  state.practiceNow.labIndex = Number.isInteger(labIndex) ? labIndex : choosePracticeNowLabIndex();
+  saveState();
+  renderPractice();
+}
+
+function extractPracticeKeywords(lab) {
+  const raw = [...lab.tasks, ...lab.hints, ...lab.requirements, ...lab.deliverables].join(' ').toLowerCase();
+  const tokens = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((x) => x.length >= 5);
+  return [...new Set(tokens)].slice(0, 22);
+}
+
+function submitPracticeNow() {
+  const labIndex = state.practiceNow.labIndex;
+  if (labIndex === null) return;
+  const answerEl = document.getElementById('practiceNowAnswer');
+  if (!answerEl) return;
+
+  const text = answerEl.value.trim().toLowerCase();
+  const lab = PRACTICE_LABS[labIndex];
+  const keywords = extractPracticeKeywords(lab);
+  const hit = keywords.filter((k) => text.includes(k)).length;
+  const coverageScore = Math.min(70, Math.round((hit / Math.max(1, keywords.length)) * 70));
+  const structureScore = text.length > 500 ? 20 : text.length > 250 ? 12 : text.length > 120 ? 7 : 0;
+  const qualityScore = Math.min(10, (text.includes('trade-off') || text.includes('tradeoff') ? 4 : 0) + (text.includes('latency') ? 3 : 0) + (text.includes('availability') ? 3 : 0));
+  const score = Math.min(100, coverageScore + structureScore + qualityScore);
+
+  state.practiceNow.score = score;
+  state.practiceNow.attempts.unshift({
+    at: new Date().toLocaleString('vi-VN'),
+    labIndex,
+    score,
+    hit,
+    totalKeywords: keywords.length
+  });
+  state.practiceNow.attempts = state.practiceNow.attempts.slice(0, 10);
+
+  if (score >= 70) {
+    if (!state.practice[labIndex]) state.practice[labIndex] = {};
+    const firstUnchecked = lab.tasks.findIndex((_, taskIndex) => !state.practice[labIndex][taskIndex]);
+    const target = firstUnchecked >= 0 ? firstUnchecked : 0;
+    state.practice[labIndex][target] = true;
+  }
+
+  const feedback = document.getElementById('practiceNowFeedback');
+  if (feedback) {
+    feedback.classList.add('show');
+    feedback.innerHTML = `
+      <h4>Kết quả Sprint: ${score}/100</h4>
+      <div>Keyword coverage: ${hit}/${keywords.length}</div>
+      <div>Gợi ý cải thiện: nêu rõ assumptions, data flow, bottleneck và trade-offs.</div>
+      <div>Ngưỡng pass đề xuất: 70 điểm.</div>
+    `;
+  }
+
+  saveState();
+  renderProgress();
+}
+
+function renderPractice() {
+  const activeLabIndex = state.practiceNow.labIndex === null ? choosePracticeNowLabIndex() : state.practiceNow.labIndex;
+  const activeLab = PRACTICE_LABS[activeLabIndex];
+
+  document.getElementById('practiceContent').innerHTML = `
+    <div class="practice-scenario" style="border-color:rgba(124,111,255,0.35)">
+      <div class="scenario-tag">// PRACTICE SPRINT</div>
+      <div class="scenario-title">🚀 Thực hành ngay trên hệ thống (15-25 phút)</div>
+      <div class="scenario-desc">Lab đề xuất: <strong>${activeLab.title}</strong> • Mục tiêu: viết nhanh một đề xuất kiến trúc có assumptions, flow và trade-offs.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn btn-primary" onclick="startPracticeNow(${activeLabIndex})">Bắt đầu lab đề xuất</button>
+        <button class="btn btn-ghost" onclick="startPracticeNow()">Đổi lab yếu nhất</button>
+        <span class="pill">Điểm sprint gần nhất: ${state.practiceNow.score || 0}/100</span>
+      </div>
+
+      <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:8px">PROMPT</div>
+      <div class="requirement-list" style="margin-bottom:12px">
+        <div class="req-item"><span>Scale</span>${activeLab.goal}</div>
+        ${activeLab.tasks.slice(0, 3).map((x) => `<div class="req-item"><span>▸</span>${x}</div>`).join('')}
+      </div>
+
+      <textarea id="practiceNowAnswer" placeholder="Viết câu trả lời kiến trúc của bạn tại đây: requirements, estimation, components, data flow, trade-offs..."></textarea>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary" onclick="submitPracticeNow()">Chấm Sprint</button>
+        <span class="pill">Pass gợi ý: >= 70</span>
+      </div>
+      <div class="ai-response" id="practiceNowFeedback"></div>
+    </div>
+  ` + PRACTICE_LABS.map((lab, i) => {
+    const c = getLabCompletion(i);
+    return `
+      <div class="practice-scenario">
+        <div class="scenario-tag">// LAB ${i + 1} • ${lab.level.toUpperCase()}</div>
+        <div class="scenario-title">🛠️ ${lab.title}</div>
+        <div class="scenario-desc"><strong>Focus:</strong> ${lab.focus}<br><strong>Goal:</strong> ${lab.goal}</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:12px;color:var(--text3)">
+          <span>Tiến độ lab</span><span>${c.done}/${c.tasks} (${c.pct}%)</span>
+        </div>
+        <div class="progress-bar" style="margin-bottom:14px"><div class="progress-fill" style="width:${c.pct}%"></div></div>
+
+        <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:8px">TASKS</div>
+        <div class="requirement-list">
+          ${lab.tasks.map((task, taskIndex) => `
+            <label class="req-item" style="cursor:pointer;justify-content:flex-start">
+              <input type="checkbox" ${getLabTaskChecked(i, taskIndex) ? 'checked' : ''} onchange="toggleLabTask(${i},${taskIndex},this.checked)">
+              <span>${task}</span>
+            </label>
+          `).join('')}
+        </div>
+
+        <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:8px">DELIVERABLES</div>
+        <div class="requirement-list" style="margin-bottom:12px">${lab.deliverables.map((d) => `<div class="req-item"><span>📦</span>${d}</div>`).join('')}</div>
+
+        <button class="btn btn-ghost" onclick="toggleMentor(${i})">🎯 Xem mentor notes</button>
+        <div class="ai-response" id="mentor-${i}">${lab.mentor.map((m) => `• ${m}`).join('<br>')}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleMentor(i) {
+  const el = document.getElementById(`mentor-${i}`);
+  el.classList.toggle('show');
+}
+
+function renderExercises() {
+  document.getElementById('exercisesContent').innerHTML = `
+    <div class="practice-scenario" style="border-color:rgba(124,111,255,0.35)">
+      <div class="scenario-tag">// MOCK INTERVIEW MODE</div>
+      <div class="scenario-title">⏱️ Mock Interview 45 phút + Rubric chấm điểm</div>
+      <div class="scenario-desc">Bắt đầu timer, tự trình bày thiết kế như thật, sau đó chấm điểm theo 8 tiêu chí. Đây là bước thực hành sát interview nhất.</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div class="mock-timer" id="mockTimer">45:00</div>
+        <button class="btn btn-primary" onclick="startMockTimer()">Start</button>
+        <button class="btn btn-ghost" onclick="pauseMockTimer()">Pause</button>
+        <button class="btn btn-ghost" onclick="resetMockTimer()">Reset</button>
+      </div>
+      <div class="rubric-grid">
+        <div class="rubric-item"><label>Requirements clarity</label><input id="rubric-req" type="range" min="1" max="5" value="3"></div>
+        <div class="rubric-item"><label>Estimation quality</label><input id="rubric-estimate" type="range" min="1" max="5" value="3"></div>
+        <div class="rubric-item"><label>Architecture baseline</label><input id="rubric-arch" type="range" min="1" max="5" value="3"></div>
+        <div class="rubric-item"><label>API modeling</label><input id="rubric-api" type="range" min="1" max="5" value="3"></div>
+        <div class="rubric-item"><label>Data modeling</label><input id="rubric-db" type="range" min="1" max="5" value="3"></div>
+        <div class="rubric-item"><label>Scaling strategy</label><input id="rubric-scale" type="range" min="1" max="5" value="3"></div>
+        <div class="rubric-item"><label>Trade-off analysis</label><input id="rubric-tradeoff" type="range" min="1" max="5" value="3"></div>
+        <div class="rubric-item"><label>Communication</label><input id="rubric-communication" type="range" min="1" max="5" value="3"></div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="ai-btn" onclick="saveMockAttempt()">💾 Lưu kết quả mock</button>
+        <span class="pill">8 tiêu chí x thang điểm 1-5</span>
+      </div>
+      ${(state.mock.history || []).length ? `<div class="ai-response show"><strong>Lịch sử gần nhất</strong><br>${state.mock.history.slice(0, 3).map((h) => `• ${h.at}: ${h.score}/${h.max} (${h.pct}%)`).join('<br>')}</div>` : ''}
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px">
+      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--accent);margin-bottom:8px">// INTERVIEW PREP</div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.7">Bài tập mô phỏng interview theo framework RESHADED. Mỗi bài có rubric và sample outline để bạn tự đối chiếu.</p>
+    </div>
+    ${EXERCISES.map((ex, i) => `
+      <div class="practice-scenario">
+        <div class="scenario-tag">// EXERCISE ${i + 1} • ${ex.level.toUpperCase()}</div>
+        <div class="scenario-title">${ex.emoji} ${ex.title}</div>
+        <div class="scenario-desc">Scale: ${ex.scale}</div>
+        <div class="requirement-list">${ex.requirements.map((r) => `<div class="req-item"><span>▸</span>${r}</div>`).join('')}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="ai-btn" onclick="toggleExercise(${i},'framework')">🎤 Rubric trả lời</button>
+          <button class="btn btn-ghost" onclick="toggleExercise(${i},'sample')">📋 Sample outline</button>
+        </div>
+        <div class="ai-response" id="framework-${i}">${ex.framework.map((x) => `• ${x}`).join('<br>')}</div>
+        <div class="ai-response" id="sample-${i}">${ex.sample.map((x) => `• ${x}`).join('<br>')}</div>
+      </div>
+    `).join('')}
+  `;
+
+  updateMockTimerUI();
+}
+
+function toggleExercise(i, type) {
+  const id = `${type}-${i}`;
+  const el = document.getElementById(id);
+  el.classList.toggle('show');
+}
+
+function renderCheatsheet() {
+  document.getElementById('cheatsheetContent').innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px">
+      <table class="cheat-table">
+        <thead><tr><th>Category</th><th>Component</th><th>Khi nào dùng</th><th>Tools</th><th>Complexity</th></tr></thead>
+        <tbody>${CHEATSHEET.map((d) => `<tr><td><span class="mono">${d.cat}</span></td><td style="font-weight:600;color:var(--text)">${d.item}</td><td>${d.use}</td><td style="color:var(--text3);font-size:12px">${d.tools}</td><td><span class="card-tag tag-${d.complexity === 'Low' ? 'beginner' : d.complexity === 'Medium' ? 'intermediate' : 'advanced'}">${d.complexity}</span></td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px">
+      <div class="theory-h2"><span class="dot"></span>Back-of-envelope nhanh</div>
+      <div class="code-block">1 day = <span class="code-number">86,400</span> s
+1 month ≈ <span class="code-number">2.5M</span> s
+1 year ≈ <span class="code-number">31.5M</span> s
+
+L1 cache: <span class="code-number">0.5</span> ns
+RAM: <span class="code-number">100</span> ns
+SSD read: <span class="code-number">150</span> us
+Same DC RTT: <span class="code-number">0.5</span> ms
+Cross-region RTT: <span class="code-number">100-200</span> ms</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px">
+      <div class="theory-h2"><span class="dot"></span>Interview Framework — RESHADED</div>
+      <ul class="theory-list">
+        <li><strong>R</strong>equirements: làm rõ phạm vi và ràng buộc.</li>
+        <li><strong>E</strong>stimation: QPS, storage, bandwidth.</li>
+        <li><strong>S</strong>chema/Storage: data model và indexing.</li>
+        <li><strong>H</strong>igh-level design: kiến trúc tổng thể.</li>
+        <li><strong>A</strong>PI design: endpoint và contract.</li>
+        <li><strong>D</strong>eep dive: bottleneck chính.</li>
+        <li><strong>E</strong>valuate: trade-offs và rủi ro.</li>
+        <li><strong>D</strong>evelop next: hướng cải tiến.</li>
+      </ul>
+    </div>
+  `;
+}
+
+function renderProgress() {
+  const roadmapPct = Math.round((state.completedItems.size / ROADMAP.length) * 100);
+  const quizTotal = state.quiz.correct + state.quiz.wrong;
+  const quizPct = quizTotal > 0 ? Math.round((state.quiz.correct / quizTotal) * 100) : 0;
+
+  const weakTopics = Object.entries(state.quiz.wrongTopics)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([k, v]) => `${TOPICS[k]?.title || k} (${v} lỗi)`);
+
+  const weakDrills = Object.entries(state.drillScores || {})
+    .sort((a, b) => (a[1].score / a[1].max) - (b[1].score / b[1].max))
+    .slice(0, 3)
+    .map(([k, v]) => `${TOPICS[k]?.title || k} (${v.score}/${v.max})`);
+
+  const weakDeep = Object.entries(state.deepScores || {})
+    .sort((a, b) => (a[1].score / a[1].max) - (b[1].score / b[1].max))
+    .slice(0, 3)
+    .map(([k, v]) => `${TOPICS[k]?.title || k} (${v.score}/${v.max})`);
+
+  document.getElementById('progressContent').innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn btn-primary" onclick="exportReportMarkdown()">⬇ Export Markdown</button>
+      <button class="btn btn-ghost" onclick="exportReportJson()">⬇ Export JSON</button>
+      <button class="btn btn-ghost" onclick="exportStudyPlanMarkdown()">⬇ Export Study Plan</button>
+      <button class="btn btn-ghost" onclick="exportStudyPlanCsv()">⬇ Export CSV</button>
+      <button class="btn btn-ghost" onclick="clearAllRoadmapDone()">↺ Bỏ đánh dấu xong</button>
+      <span class="pill">Mock attempts: ${(state.mock.history || []).length}</span>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <div>
+          <div class="scenario-tag" style="color:var(--accent)">// AUTO STUDY PLAN</div>
+          <div class="scenario-title" style="font-size:16px">Lộ trình tự sinh theo tiến độ hiện tại</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost" onclick="renderStudyPlan(4)">4 tuần</button>
+          <button class="btn btn-ghost" onclick="renderStudyPlan(8)">8 tuần</button>
+          <button class="btn btn-primary" onclick="renderStudyPlan(12)">12 tuần</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <span class="pill">Intensity</span>
+        <button class="btn btn-ghost ${state.studyIntensity === 'light' ? 'btn-active' : ''}" onclick="setStudyIntensity('light')">Light</button>
+        <button class="btn btn-ghost ${state.studyIntensity === 'balanced' ? 'btn-active' : ''}" onclick="setStudyIntensity('balanced')">Balanced</button>
+        <button class="btn btn-ghost ${state.studyIntensity === 'intensive' ? 'btn-active' : ''}" onclick="setStudyIntensity('intensive')">Intensive</button>
+        <span class="pill">Current: ${state.studyIntensity}</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <span class="pill">Week Focus</span>
+        <button class="btn btn-ghost" onclick="setStudyWeek(${Math.max(1, (state.studyCurrentWeek || 1) - 1)})">← Prev</button>
+        <span class="pill">W${state.studyCurrentWeek || 1}</span>
+        <button class="btn btn-ghost" onclick="setStudyWeek(${Math.min(state.studyPlanWeeks || 12, (state.studyCurrentWeek || 1) + 1)})">Next →</button>
+        <button class="btn btn-primary" onclick="renderAdaptiveQuiz(currentQuizCount)">Quiz theo tuần này</button>
+      </div>
+      <div id="studyPlanBox" style="margin-top:12px"></div>
+    </div>
+
+    <div class="scoreboard">
+      <div class="score-card"><div class="score-num" style="color:var(--accent)">${state.completedItems.size}</div><div class="score-label">Roadmap done</div></div>
+      <div class="score-card"><div class="score-num" style="color:var(--accent3)">${roadmapPct}%</div><div class="score-label">Tiến độ tổng</div></div>
+      <div class="score-card"><div class="score-num">${quizPct}%</div><div class="score-label">Quiz accuracy</div></div>
+      <div class="score-card"><div class="score-num" style="color:var(--accent)">${state.bestQuizPct}%</div><div class="score-label">Best quiz</div></div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px">
+      <div class="theory-h2"><span class="dot"></span>Chủ đề cần ôn ưu tiên</div>
+      ${weakTopics.length ? `<div class="requirement-list">${weakTopics.map((w) => `<div class="req-item"><span>⚠️</span>${w}</div>`).join('')}</div>` : `<p class="theory-p">Bạn chưa có câu sai nào hoặc chưa làm quiz. Làm quiz để hệ thống gợi ý điểm yếu.</p>`}
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px">
+      <div class="theory-h2"><span class="dot"></span>Drill tự luận cần cải thiện</div>
+      ${weakDrills.length ? `<div class="requirement-list">${weakDrills.map((w) => `<div class="req-item"><span>📝</span>${w}</div>`).join('')}</div>` : `<p class="theory-p">Chưa có dữ liệu drill. Vào tab Drill của từng topic để làm bài và chấm tự động.</p>`}
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px">
+      <div class="theory-h2"><span class="dot"></span>Deep Dive cần cải thiện</div>
+      ${weakDeep.length ? `<div class="requirement-list">${weakDeep.map((w) => `<div class="req-item"><span>🧩</span>${w}</div>`).join('')}</div>` : `<p class="theory-p">Chưa có dữ liệu deep dive. Vào tab Deep Dive của từng topic để viết và chấm.</p>`}
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px">
+      <div class="theory-h2"><span class="dot"></span>Roadmap checklist - Core lý thuyết</div>
+      <p class="theory-p" style="margin-bottom:10px">Checklist này map trực tiếp với các module lý thuyết trong tab Theory (scalability, database, caching, consistency...).</p>
+      ${ROADMAP.map((item, i) => `
+        <div onclick="toggleDone(${i})" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer">
+          <input type="checkbox" ${state.completedItems.has(i) ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleDone(${i})" style="width:18px;height:18px;accent-color:var(--accent3);cursor:pointer;flex-shrink:0">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:500;${state.completedItems.has(i) ? 'text-decoration:line-through;opacity:0.5;' : ''}">${item.name}</div>
+            <div style="font-size:11px;color:var(--text3)">${item.topics}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:4px"><strong>Học từ:</strong> ${getRoadmapGuide(i).from}</div>
+            <div style="font-size:11px;color:var(--text3)"><strong>Thực hành:</strong> ${getRoadmapGuide(i).labTitle}</div>
+            <div style="font-size:11px;color:var(--text3)"><strong>Xong khi:</strong> ${getRoadmapGuide(i).outcome}</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px" onclick="event.stopPropagation()">
+              <button class="btn btn-ghost" onclick="roadmapOpenTheory(${i})">Theory</button>
+              <button class="btn btn-ghost" onclick="roadmapOpenPractice(${i})">Practice</button>
+              <button class="btn btn-ghost" onclick="roadmapOpenQuiz()">Quiz</button>
+            </div>
+          </div>
+          <span class="card-tag tag-${item.difficulty}">${item.difficulty.toUpperCase()}</span>
+        </div>
+      `).join('')}
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px">
+      <div class="theory-h2"><span class="dot"></span>Roadmap checklist - First American interview track</div>
+      <p class="theory-p" style="margin-bottom:10px">Checklist này là track mô phỏng phỏng vấn (round-based), dùng để luyện theo bối cảnh Senior Fullstack thực chiến.</p>
+      ${FIRST_AMERICAN_TRACK.map((item, i) => `
+        <div onclick="toggleInterviewTrackDone(${i})" style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer">
+          <input type="checkbox" ${state.interviewTrackDone.has(i) ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleInterviewTrackDone(${i})" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;margin-top:2px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;${state.interviewTrackDone.has(i) ? 'text-decoration:line-through;opacity:0.5;' : ''}">W${item.week} - ${item.round}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">${item.focus}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px"><strong>Làm ở đâu:</strong> ${item.whereToDo}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px"><strong>Xong khi nào:</strong> ${item.doneWhen}</div>
+          </div>
+          <span class="card-tag tag-${item.difficulty}">${item.difficulty.toUpperCase()}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  renderStudyPlan(state.studyPlanWeeks || 12);
+}
+
+function init() {
+  loadState();
+  state.mock.running = false;
+  updateBadges();
+  updateProgress();
+  renderRoadmap();
+  renderTheoryList();
+  renderPractice();
+  renderQuiz(currentQuizCount);
+  renderCheatsheet();
+  renderProgress();
+  updateMockTimerUI();
+}
+
+init();
+</script>
+</body>
+</html>
